@@ -32,7 +32,6 @@ function initApp() {
   buildIoTPage();
   buildHistoryPage();
   if(state.role==='admin') buildAdminPage();
-  buildGuidePage();
 
   // Clock
   setInterval(() => {
@@ -45,7 +44,7 @@ function initApp() {
   setInterval(loadAlertes, 30000);
 
   navigateTo('dashboard');
-  showNotif(`✅ Bienvenue, ${usr.nom} !`);
+  showNotif(`${typeof T==='function'?T('notifWelcome'):'✅ Bienvenue'}, ${usr.nom} !`);
 
   // ── Connexion MySQL
   checkDbStatus();
@@ -105,7 +104,7 @@ function navigateTo(id) {
   const labels = {
     dashboard:'Tableau de Bord', rf:'Random Forest — Recommandation Culture',
     lstm:'Prévision LSTM — Séries Temporelles', iot:'IoT · ESP32 · LoRaWAN',
-    history:'Historique des Données', admin:'Administration', guide:'Guide Utilisation',
+    history:'Historique des Données', admin:'Administration',
   };
   document.getElementById('topbar-title').textContent = labels[id] || id;
 
@@ -143,15 +142,16 @@ async function updateLiveSensors() {
     };
     const hs = avg('humidite_sol');
     const ha = avg('humidite_air');
+    const _t = typeof T === 'function' ? T : k => k;
     const data = [
-      { emoji:'🌡️', name:'Température',   val: avg('temperature')?.toFixed(1)+'°C',         status:'ok',                             statusLabel:'Normal' },
-      { emoji:'💧', name:'Humidité Sol',   val: Math.round(hs)+'%',                          status: hs<20?'crit':hs<35?'warn':'ok',  statusLabel: hs<20?'Critique':hs<35?'Surveiller':'Bon' },
-      { emoji:'🧪', name:'pH du Sol',      val: avg('ph')?.toFixed(1),                       status: avg('ph')<5.5?'warn':'ok',        statusLabel: avg('ph')<5.5?'Acide':'Neutre' },
-      { emoji:'🌿', name:'Azote (N)',      val: Math.round(avg('azote'))+' kg',              status:'ok',                             statusLabel:'Suffisant' },
-      { emoji:'⚗️', name:'Phosphore (P)', val: Math.round(avg('phosphore'))+' kg',          status: avg('phosphore')<25?'crit':'ok',  statusLabel: avg('phosphore')<25?'Critique':'OK' },
-      { emoji:'🌧️', name:'Humidité Air',  val: Math.round(ha)+'%',                          status:'ok',                             statusLabel:'Normal' },
-      { emoji:'☀️', name:'Luminosité',    val: Math.round(avg('luminosite'))+' lx',         status:'ok',                             statusLabel:'Bon' },
-      { emoji:'🔬', name:'CO₂',           val: Math.round(avg('co2'))+' ppm',               status:'ok',                             statusLabel:'Normal' },
+      { emoji:'🌡️', name:_t('sTemp'),      val: avg('temperature')?.toFixed(1)+'°C',  status:'ok',                            statusLabel:_t('stNormal') },
+      { emoji:'💧', name:_t('sHumSol'),    val: Math.round(hs)+'%',                   status: hs<20?'crit':hs<35?'warn':'ok', statusLabel: hs<20?_t('stCritique'):hs<35?_t('stSurveiller'):_t('stBon') },
+      { emoji:'🧪', name:_t('sPh'),        val: avg('ph')?.toFixed(1),                status: avg('ph')<5.5?'warn':'ok',       statusLabel: avg('ph')<5.5?_t('stAcide'):_t('stNeutre') },
+      { emoji:'🌿', name:_t('sAzote'),     val: Math.round(avg('azote'))+' kg',       status:'ok',                            statusLabel:_t('stSuffisant') },
+      { emoji:'⚗️', name:_t('sPhosphore'),val: Math.round(avg('phosphore'))+' kg',   status: avg('phosphore')<25?'crit':'ok', statusLabel: avg('phosphore')<25?_t('stCritique'):_t('stOk') },
+      { emoji:'🌧️', name:_t('sHumAir'),   val: Math.round(ha)+'%',                   status:'ok',                            statusLabel:_t('stNormal') },
+      { emoji:'☀️', name:_t('sLum'),       val: Math.round(avg('luminosite'))+' lx', status:'ok',                            statusLabel:_t('stBon') },
+      { emoji:'🔬', name:_t('sCo2'),       val: Math.round(avg('co2'))+' ppm',       status:'ok',                            statusLabel:_t('stNormal') },
     ];
     grid.innerHTML = data.map(s => `
       <div class="sensor-card ${s.status}">
@@ -163,20 +163,21 @@ async function updateLiveSensors() {
   } else {
     // Fallback hors-ligne : données aléatoires
     const hs = Math.round(35+Math.random()*30);
+    const _t2 = typeof T === 'function' ? T : k => k;
     const data = [
-      { emoji:'🌡️', name:'Température',   val: (22+Math.random()*8).toFixed(1)+'°C',  status:'ok',  statusLabel:'Normal (local)' },
-      { emoji:'💧', name:'Humidité Sol',   val: hs+'%',  status:hs<30?'warn':'ok', statusLabel:hs<30?'Surveiller':'Bon' },
-      { emoji:'🧪', name:'pH du Sol',      val: (5.8+Math.random()*2).toFixed(1),      status:'ok',  statusLabel:'Neutre (local)' },
-      { emoji:'🌿', name:'Azote (N)',      val: Math.round(55+Math.random()*40)+' kg', status:'ok',  statusLabel:'Suffisant' },
-      { emoji:'⚗️', name:'Phosphore (P)', val: Math.round(30+Math.random()*30)+' kg', status:'ok',  statusLabel:'OK' },
-      { emoji:'🌧️', name:'Humidité Air',  val: Math.round(50+Math.random()*30)+'%',   status:'ok',  statusLabel:'Normal' },
-      { emoji:'☀️', name:'Luminosité',    val: Math.round(600+Math.random()*800)+' lx',status:'ok', statusLabel:'Bon' },
-      { emoji:'🔬', name:'CO₂',           val: Math.round(380+Math.random()*50)+' ppm',status:'ok', statusLabel:'Normal' },
+      { emoji:'🌡️', name:_t2('sTemp'),     val: (22+Math.random()*8).toFixed(1)+'°C',  status:'ok',                            statusLabel:_t2('stNormal')+' (local)' },
+      { emoji:'💧', name:_t2('sHumSol'),   val: hs+'%',                                status:hs<30?'warn':'ok',               statusLabel:hs<30?_t2('stSurveiller'):_t2('stBon') },
+      { emoji:'🧪', name:_t2('sPh'),       val: (5.8+Math.random()*2).toFixed(1),      status:'ok',                            statusLabel:_t2('stNeutre')+' (local)' },
+      { emoji:'🌿', name:_t2('sAzote'),    val: Math.round(55+Math.random()*40)+' kg', status:'ok',                            statusLabel:_t2('stSuffisant') },
+      { emoji:'⚗️', name:_t2('sPhosphore'),val: Math.round(30+Math.random()*30)+' kg', status:'ok',                            statusLabel:_t2('stOk') },
+      { emoji:'🌧️', name:_t2('sHumAir'),  val: Math.round(50+Math.random()*30)+'%',   status:'ok',                            statusLabel:_t2('stNormal') },
+      { emoji:'☀️', name:_t2('sLum'),      val: Math.round(600+Math.random()*800)+' lx',status:'ok',                           statusLabel:_t2('stBon') },
+      { emoji:'🔬', name:_t2('sCo2'),      val: Math.round(380+Math.random()*50)+' ppm',status:'ok',                           statusLabel:_t2('stNormal') },
     ];
     grid.innerHTML = data.map(s => `
       <div class="sensor-card ${s.status}">
         <div class="sensor-emoji">${s.emoji}</div>
-        <div class="sensor-val">${s.val} <span style="font-size:9px;opacity:.4">hors-ligne</span></div>
+        <div class="sensor-val">${s.val} <span style="font-size:9px;opacity:.4">${_t2('stHorsLigne')}</span></div>
         <div class="sensor-name">${s.name}</div>
         <div class="sensor-status s-${s.status}">${s.statusLabel}</div>
       </div>`).join('');

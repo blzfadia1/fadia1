@@ -70,7 +70,6 @@ const NAV_CONFIG = {
     { section:'Gestion' },
     { id:'history',   icon:'📜', label:'Historique', badge:'24' },
     { id:'admin',     icon:'👑', label:'Administration' },
-    { id:'guide',     icon:'📖', label:'Guide Utilisation' },
   ],
   agriculteur: [
     { section:'Mon Terrain' },
@@ -79,7 +78,6 @@ const NAV_CONFIG = {
     { id:'lstm',      icon:'🌧️', label:'Prévisions Météo' },
     { section:'Aide' },
     { id:'history',   icon:'📜', label:'Mes Mesures' },
-    { id:'guide',     icon:'📖', label:'Comment Utiliser ?' },
   ],
   technicien: [
     { section:'Systèmes' },
@@ -88,6 +86,5 @@ const NAV_CONFIG = {
     { id:'lstm',      icon:'📈', label:'Modèles IA' },
     { section:'Données' },
     { id:'history',   icon:'📜', label:'Historique' },
-    { id:'guide',     icon:'📖', label:'Documentation' },
   ],
 };

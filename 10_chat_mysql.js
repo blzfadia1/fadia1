@@ -7,62 +7,157 @@
 "use strict";
 
 /* ═══════════════════════════════════════════════════════
-   CHATBOT AGRISMART
+   CHATBOT AGRISMART — Amélioré
+   ✔ FR / AR / EN   ✔ Voix (parle + écoute)   ✔ Données IoT live
 ═══════════════════════════════════════════════════════ */
 let chatOpen = false;
 let chatFirstOpen = true;
+let _ttsEnabled = true;   // synthèse vocale activée
+let _sttActive  = false;  // reconnaissance vocale active
 
+/* ── Base de connaissances multilingue ─────────────────── */
 const CHAT_KB = [
-  { keys:['random forest','rf','forêt','foret','arbres','arbre','culture','planter','recommand'],
-    rep:`🌲 **Random Forest — Comment l'utiliser ?**\n\nAllez dans l'onglet **"Random Forest"** dans le menu.\n\n➊ Ajustez les **8 curseurs** avec les valeurs de vos capteurs terrain (pH, humidité, N/P/K, température, précipitations)\n➋ Cliquez sur **"Lancer l'Analyse"**\n➌ L'algorithme fait voter **100 arbres de décision**\n➍ Lisez la culture recommandée et les conseils\n\n✅ Une confiance > 75% = recommandation très fiable.` },
-  { keys:['lstm','prévision','prevision','temporel','futur','météo','meteo','irrigation','irrigu'],
-    rep:`📈 **LSTM — Prévision Temporelle**\n\nLe **LSTM** (Long Short-Term Memory) prédit les besoins futurs sur **7 jours** en analysant 30 jours de données passées.\n\n➊ Allez dans **"Prévision LSTM"**\n➋ La **ligne violette** = prédiction future\n➌ Si la barre du jour est sous le **seuil jaune** → irriguez ce jour-là\n➍ Le planning vous dit exactement quand arroser\n\n📉 Précision actuelle : **92.4%** — MAE : 0.023` },
-  { keys:['lorawan','lora','esp32','capteur','iot','signal','rssi','nœud','noeud','gateway'],
-    rep:`📡 **LoRaWAN & ESP32**\n\nL'architecture IoT fonctionne en 4 étapes :\n\n📟 **ESP32** → collecte pH, T°, humidité, NPK toutes les 10s\n📡 **LoRaWAN 868MHz** → transmet jusqu'à 15 km, très faible consommation\n☁️ **Serveur TTN/MQTT** → reçoit et stocke les données\n🧠 **IA (RF + LSTM)** → analyse et recommande\n\n⚡ Autonomie batterie : **287 jours** par nœud\nSi signal faible : augmentez le Spreading Factor (SF7→SF12)` },
-  { keys:['acide','alcalin','ph','chaux','sol','terre','fertilisant','engrais','azote','phosphore','potassium'],
-    rep:`🧪 **Problème de Sol — Que faire ?**\n\n**Sol trop acide (pH < 5.5) :**\n→ Ajoutez **500–1000 kg/ha de chaux agricole (CaCO₃)**\n\n**Sol trop alcalin (pH > 7.5) :**\n→ Ajoutez du **soufre élémentaire (50 kg/ha)**\n\n**Manque d'azote (N < 40 kg/ha) :**\n→ Épandez de l'**urée (46% N) : 80–120 kg/ha**\n\n**Manque de phosphore :**\n→ Utilisez du **superphosphate triple**\n\nPH optimal pour la plupart des cultures : **6.0 – 7.0**` },
-  { keys:['humidité','humidite','eau','sec','irrigat','arros','goutte'],
-    rep:`💧 **Gestion de l'Eau & Irrigation**\n\n🔴 **Sol < 20% humidité** → Irrigation urgente dans les 12h\n🟡 **Sol 20–35%** → Arrosez dans les 24–48h\n✅ **Sol 35–70%** → Bon niveau, maintenez\n🌊 **Sol > 85%** → Trop humide, risque d'asphyxie racinaire\n\nLe **LSTM prédit** à 7 jours pour planifier vos irrigations à l'avance.\n\nConseil : le **goutte-à-goutte** économise 40% d'eau vs aspersion classique.` },
-  { keys:['ajouter','supprimer','modifier','utilisateur','compte','admin','gestion'],
-    rep:`👥 **Gestion des Utilisateurs (Admin uniquement)**\n\nAllez dans **"Administration"** dans le menu :\n\n➊ **Ajouter** un utilisateur → bouton vert **"➕ Ajouter"**\n➋ **Modifier** → cliquez sur ✏️ à droite de l'utilisateur\n➌ **Supprimer** → cliquez sur 🗑 (confirmation demandée)\n➍ **Filtrer** par rôle : Agriculteur / Technicien / Admin\n➎ **Rechercher** par nom ou identifiant\n\nLes rôles disponibles : 🌾 Agriculteur, 🔧 Technicien, 👑 Admin` },
-  { keys:['batterie','énergie','energie','autonomie','consomm'],
-    rep:`⚡ **Autonomie & Énergie des Capteurs**\n\nChaque nœud ESP32 avec batterie LiPo 3000mAh dure **287 jours** grâce au mode veille profonde LoRa.\n\n🔋 **Batterie < 20%** → alerte orange dans le dashboard\n🔋 **Batterie < 10%** → alerte rouge, remplacement urgent\n\n💡 **Conseils :**\n• Aumentez l'intervalle d'envoi (10s → 30s) pour économiser\n• Utilisez SF plus bas (SF7) si couverture suffisante\n• Panneaux solaires 5W recommandés pour les zones exposées` },
-  { keys:['précision','precision','performance','modèle','model','résultat','résultats'],
-    rep:`📊 **Performance des Modèles IA**\n\n| Modèle | Précision | Métrique |\n|--------|-----------|---------|\n| 🌲 Random Forest | **98.0%** | Accuracy |\n| 📈 LSTM | **92.4%** | Accuracy |\n| 🤖 Fusion RF+LSTM | **98.0%** | F1-score |\n\nLe RF utilise **100 arbres** avec 8 features capteurs.\nLe LSTM analyse **30 jours** de séquences temporelles.\n\nMise à jour automatique du modèle chaque mois.` },
-  { keys:['alerte','urgent','critique','problème','probleme','erreur','panne'],
-    rep:`🔔 **Gestion des Alertes**\n\n🔴 **Rouge = URGENT** → action dans les 12h\n🟡 **Orange = Attention** → surveillance dans les 48h\n🔵 **Bleu = Information** → pas d'action requise\n✅ **Vert = Tout va bien** → conditions optimales\n\nLes alertes apparaissent dans :\n• Le **Tableau de Bord** (section alertes actives)\n• La barre de **notification** en haut\n• Votre **email/SMS** si configuré\n\nEn cas d'alerte rouge non résolue après 2h → escalade automatique à l'admin.` },
-  { keys:['bienvenu','bonjour','salut','hello','aide','help','quoi','comment','utiliser','début','debut'],
-    rep:`🌿 **Bienvenue sur AgriSmart !**\n\nJe suis votre assistant intelligent. Voici ce que je peux vous expliquer :\n\n🌲 **Random Forest** → recommandation de culture\n📈 **LSTM** → prévisions d'irrigation sur 7 jours\n📡 **LoRaWAN / ESP32** → configuration des capteurs\n🧪 **Problèmes de sol** → pH, fertilisation, irrigation\n👥 **Administration** → gestion des utilisateurs\n📊 **Performances** → précision des modèles IA\n\nPosez votre question ou cliquez sur un sujet rapide ci-dessous !` },
+  { keys:['random forest','rf','forêt','foret','arbres','arbre','culture','planter','recommand','غابة','شجر','محصول','زراعة'],
+    fr:`🌲 **Random Forest — Comment l'utiliser ?**\n\nAllez dans **"Random Forest"** dans le menu.\n\n➊ Ajustez les **8 curseurs** (pH, humidité, N/P/K, température, précipitations)\n➋ Cliquez **"Lancer l'Analyse"** — 100 arbres votent\n➌ Lisez la culture recommandée et les conseils\n\n✅ Confiance > 75% = recommandation très fiable.`,
+    ar:`🌲 **الغابة العشوائية — كيف تستخدمها؟**\n\nانتقل إلى **"Random Forest"** في القائمة.\n\n➊ اضبط **8 أشرطة** (pH، الرطوبة، N/P/K، الحرارة، الأمطار)\n➋ اضغط **"تشغيل التحليل"** — 100 شجرة تصوّت\n➌ اقرأ التوصية والنصائح\n\n✅ ثقة > 75% = توصية موثوقة جداً.`,
+    en:`🌲 **Random Forest — How to use it?**\n\nGo to **"Random Forest"** in the menu.\n\n➊ Adjust the **8 sliders** (pH, humidity, N/P/K, temperature, rainfall)\n➋ Click **"Run Analysis"** — 100 trees vote\n➌ Read the recommended crop and advice\n\n✅ Confidence > 75% = very reliable recommendation.`},
+  { keys:['lstm','prévision','prevision','temporel','futur','météo','meteo','irrigation','irrigu','توقع','ري','مستقبل'],
+    fr:`📈 **LSTM — Prédiction du rendement agricole**\n\nLe **LSTM** (Long Short-Term Memory) calcule le rendement en t/ha via 4 portes mathématiques :\n\n🔢 **f_t** = porte d'oubli · **i_t** = porte d'entrée\n🔢 **g_t** = candidat · **o_t** = porte de sortie\n\n➊ Allez dans **"Prévision LSTM"**\n➋ Ajustez les 5 curseurs météo\n➌ Cliquez **"Lancer"** → les portes se calculent en temps réel\n➍ Lisez le rendement prédit en t/ha\n\n📉 Précision : **92.4%** — MAE : 0.023`,
+    ar:`📈 **LSTM — التنبؤ بالمحصول الزراعي**\n\nيحسب **LSTM** المحصول بـ طن/هكتار عبر 4 بوابات رياضية:\n\n🔢 **f_t** = بوابة النسيان · **i_t** = بوابة الإدخال\n🔢 **g_t** = المرشح · **o_t** = بوابة الإخراج\n\n➊ انتقل إلى **"توقعات LSTM"**\n➋ اضبط 5 أشرطة الطقس\n➌ اضغط **"تشغيل"** → البوابات تُحسب آنياً\n\n📉 الدقة: **92.4%**`,
+    en:`📈 **LSTM — Agricultural yield prediction**\n\n**LSTM** computes yield in t/ha via 4 mathematical gates:\n\n🔢 **f_t** = forget gate · **i_t** = input gate\n🔢 **g_t** = candidate · **o_t** = output gate\n\n➊ Go to **"LSTM Forecast"**\n➋ Adjust 5 weather sliders\n➌ Click **"Run"** → gates compute in real time\n\n📉 Accuracy: **92.4%** — MAE: 0.023`},
+  { keys:['lorawan','lora','esp32','capteur','iot','signal','rssi','nœud','noeud','gateway','مستشعر','لورا','بث'],
+    fr:`📡 **LoRaWAN & ESP32**\n\n📟 **ESP32** → collecte pH, T°, humidité, NPK toutes les 10s\n📡 **LoRaWAN 868MHz** → 15 km, très faible consommation\n☁️ **MySQL XAMPP** → stockage et historique\n🧠 **RF + LSTM** → analyse et recommande\n\n⚡ Autonomie : **287 jours** par nœud\nSignal faible → augmentez SF (SF7→SF12)`,
+    ar:`📡 **LoRaWAN و ESP32**\n\n📟 **ESP32** → يقيس pH، الحرارة، الرطوبة، NPK كل 10 ثوان\n📡 **LoRaWAN 868MHz** → 15 كم، استهلاك منخفض جداً\n☁️ **MySQL XAMPP** → تخزين البيانات\n\n⚡ عمر البطارية: **287 يوم** لكل عقدة`,
+    en:`📡 **LoRaWAN & ESP32**\n\n📟 **ESP32** → reads pH, T°, humidity, NPK every 10s\n📡 **LoRaWAN 868MHz** → 15 km range, ultra-low power\n☁️ **MySQL XAMPP** → data storage\n\n⚡ Battery life: **287 days** per node`},
+  { keys:['acide','alcalin','ph','chaux','sol','terre','fertilisant','engrais','azote','phosphore','potassium','حموضة','تربة','سماد'],
+    fr:`🧪 **Problème de Sol — Solutions**\n\n**Sol trop acide (pH < 5.5) :**\n→ Chaux agricole : **500–1000 kg/ha**\n\n**Sol trop alcalin (pH > 7.5) :**\n→ Soufre élémentaire : **50 kg/ha**\n\n**Manque d'azote (N < 40 kg/ha) :**\n→ Urée (46% N) : **80–120 kg/ha**\n\npH optimal : **6.0 – 7.0**`,
+    ar:`🧪 **مشاكل التربة — الحلول**\n\n**تربة حامضة (pH < 5.5):**\n→ جير زراعي: **500–1000 كغ/هكتار**\n\n**تربة قلوية (pH > 7.5):**\n→ كبريت: **50 كغ/هكتار**\n\n**نقص النيتروجين:**\n→ يوريا (46% N): **80–120 كغ/هكتار**`,
+    en:`🧪 **Soil Problems — Solutions**\n\n**Acid soil (pH < 5.5):** Agricultural lime: **500–1000 kg/ha**\n**Alkaline soil (pH > 7.5):** Sulfur: **50 kg/ha**\n**Nitrogen deficiency:** Urea (46% N): **80–120 kg/ha**\n\nOptimal pH: **6.0 – 7.0**`},
+  { keys:['humidité','humidite','eau','sec','irrigat','arros','goutte','رطوبة','ماء','ري','جفاف'],
+    fr:`💧 **Gestion de l'Eau & Irrigation**\n\n🔴 **Sol < 20%** → Irrigation urgente (12h)\n🟡 **Sol 20–35%** → Arrosez dans 24–48h\n✅ **Sol 35–70%** → Bon niveau\n🌊 **Sol > 85%** → Trop humide, vérifiez le drainage\n\nLe **LSTM prédit** 7 jours à l'avance.`,
+    ar:`💧 **إدارة المياه والري**\n\n🔴 **< 20%** → ري عاجل خلال 12 ساعة\n🟡 **20–35%** → ري خلال 24–48 ساعة\n✅ **35–70%** → مستوى جيد\n🌊 **> 85%** → رطوبة زائدة، تحقق من الصرف`,
+    en:`💧 **Water & Irrigation Management**\n\n🔴 **< 20%** → Urgent irrigation (12h)\n🟡 **20–35%** → Water within 24–48h\n✅ **35–70%** → Good level\n🌊 **> 85%** → Too wet, check drainage`},
+  { keys:['capteur iot','données capteur','données live','données en direct','temperature actuelle','humidité actuelle','ph actuel','بيانات مباشرة','درجة حرارة','رطوبة التربة الان'],
+    dynamic: true,  // réponse dynamique depuis les capteurs IoT
+    fr:'📡 **Données IoT en direct :**',
+    ar:'📡 **بيانات المستشعرات الآن :**',
+    en:'📡 **Live IoT data :**'},
+  { keys:['ajouter','supprimer','modifier','utilisateur','compte','admin','gestion','إضافة','حذف','مستخدم'],
+    fr:`👥 **Gestion des Utilisateurs (Admin)**\n\nAllez dans **"Administration"** :\n➊ **Ajouter** → bouton ➕ Ajouter\n➋ **Modifier** → cliquez ✏️\n➌ **Supprimer** → cliquez 🗑\n\nRôles : 🌾 Agriculteur · 🔧 Technicien · 👑 Admin`,
+    ar:`👥 **إدارة المستخدمين (مدير)**\n\nانتقل إلى **"الإدارة"**:\n➊ **إضافة** → زر ➕\n➋ **تعديل** → اضغط ✏️\n➌ **حذف** → اضغط 🗑`,
+    en:`👥 **User Management (Admin)**\n\nGo to **"Administration"**:\n➊ **Add** → ➕ button\n➋ **Edit** → click ✏️\n➌ **Delete** → click 🗑`},
+  { keys:['bienvenu','bonjour','salut','hello','aide','help','quoi','comment','utiliser','début','debut','مرحبا','ساعدني','مساعدة'],
+    fr:`🌿 **Bonjour ! Je suis l'assistant AgriSmart.**\n\nJe peux répondre en 🇫🇷 français, 🇩🇿 arabe et 🇬🇧 anglais.\n\nJe peux vous aider sur :\n🌲 **Random Forest** → recommandation de culture\n📈 **LSTM** → prédiction du rendement\n📡 **IoT** → capteurs ESP32 et LoRaWAN\n🧪 **Sol** → pH, fertilisation, irrigation\n📡 **Données live** → lisez vos capteurs en temps réel`,
+    ar:`🌿 **مرحباً! أنا مساعد AgriSmart.**\n\nأتكلم 🇫🇷 فرنسي، 🇩🇿 عربي و 🇬🇧 إنجليزي.\n\nيمكنني مساعدتك في:\n🌲 **الغابة العشوائية** → اختيار المحصول\n📈 **LSTM** → التنبؤ بالمحصول\n📡 **إنترنت الأشياء** → مستشعرات ESP32\n🧪 **التربة** → pH والتسميد`,
+    en:`🌿 **Hello! I'm the AgriSmart assistant.**\n\nI speak 🇫🇷 French, 🇩🇿 Arabic and 🇬🇧 English.\n\nI can help you with:\n🌲 **Random Forest** → crop recommendation\n📈 **LSTM** → yield prediction\n📡 **IoT** → ESP32 sensors\n🧪 **Soil** → pH, fertilization, irrigation`},
 ];
 
-function trouverReponse(question) {
-  const q = question.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  for (const entry of CHAT_KB) {
-    if (entry.keys.some(k => q.includes(k.normalize('NFD').replace(/[\u0300-\u036f]/g,'')))) {
-      return entry.rep;
-    }
-  }
-  return `🤔 Je n'ai pas trouvé de réponse précise à votre question.\n\nVoici ce que je sais expliquer :\n• 🌲 Random Forest & recommandations\n• 📈 LSTM & prévisions\n• 📡 LoRaWAN & ESP32\n• 🧪 Problèmes de sol\n• 👥 Gestion des utilisateurs\n• ⚡ Autonomie des capteurs\n\nReformez votre question ou utilisez les boutons rapides ci-dessous.`;
+/* ── Détection langue de la question ─────────────────────── */
+function _detectLang(q){
+  if(/[\u0600-\u06FF]/.test(q)) return 'ar';
+  if(/\b(the|is|are|how|what|can|i|you|my)\b/i.test(q)) return 'en';
+  return 'fr';
 }
 
-function formatMsg(text) {
+/* ── Réponse dynamique depuis les capteurs IoT ──────────── */
+async function _getDynamicReply(lang){
+  const d = await apiCall('capteurs_live');
+  if(d.success && d.capteurs && d.capteurs.length>0){
+    const avg = k => {
+      const v=d.capteurs.map(c=>parseFloat(c[k])).filter(v=>!isNaN(v)&&v>0);
+      return v.length ? (v.reduce((a,b)=>a+b,0)/v.length) : null;
+    };
+    const T=avg('temperature'), H=avg('humidite_sol'), pH=avg('ph'), N=avg('azote');
+    const lines = {
+      fr:`\n\n🌡️ Température : **${T?.toFixed(1)||'—'}°C**\n💧 Humidité sol : **${H?Math.round(H)+'%':'—'}**\n🧪 pH : **${pH?.toFixed(1)||'—'}**\n🌿 Azote : **${N?Math.round(N)+' kg/ha':'—'}**\n\n📡 *Données MySQL en direct — ${d.capteurs.length} nœud(s)*`,
+      ar:`\n\n🌡️ الحرارة : **${T?.toFixed(1)||'—'}°C**\n💧 رطوبة التربة : **${H?Math.round(H)+'%':'—'}**\n🧪 pH : **${pH?.toFixed(1)||'—'}**\n🌿 النيتروجين : **${N?Math.round(N)+' كغ/هكتار':'—'}**\n\n📡 *بيانات MySQL مباشرة — ${d.capteurs.length} عقدة*`,
+      en:`\n\n🌡️ Temperature: **${T?.toFixed(1)||'—'}°C**\n💧 Soil moisture: **${H?Math.round(H)+'%':'—'}**\n🧪 pH: **${pH?.toFixed(1)||'—'}**\n🌿 Nitrogen: **${N?Math.round(N)+' kg/ha':'—'}**\n\n📡 *Live MySQL data — ${d.capteurs.length} node(s)*`,
+    };
+    return lines[lang]||lines.fr;
+  }
+  const offline={fr:'\n\n⚠️ Capteurs hors-ligne — XAMPP non lancé.',ar:'\n\n⚠️ المستشعرات غير متصلة — XAMPP لم يبدأ.',en:'\n\n⚠️ Sensors offline — XAMPP not running.'};
+  return offline[lang]||offline.fr;
+}
+
+/* ── Chercher réponse ────────────────────────────────────── */
+async function trouverReponse(question){
+  const q = question.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const lang = _detectLang(question);
+  for(const entry of CHAT_KB){
+    const hit = entry.keys.some(k=>q.includes(k.normalize('NFD').replace(/[\u0300-\u036f]/g,'')));
+    if(hit){
+      if(entry.dynamic){
+        const prefix = entry[lang]||entry.fr;
+        const data   = await _getDynamicReply(lang);
+        return prefix + data;
+      }
+      return entry[lang]||entry.fr;
+    }
+  }
+  const fallback={
+    fr:`🤔 Je n'ai pas de réponse précise.\n\nEssayez : **Random Forest**, **LSTM**, **IoT**, **sol**, **capteur IoT**, **irrigation** ou **utilisateur**.`,
+    ar:`🤔 لم أجد إجابة دقيقة.\n\nجرّب: **الغابة العشوائية**، **LSTM**، **إنترنت الأشياء**، **التربة**، **بيانات مباشرة**.`,
+    en:`🤔 I don't have a precise answer.\n\nTry: **Random Forest**, **LSTM**, **IoT**, **soil**, **live sensors**, **irrigation** or **user**.`,
+  };
+  return fallback[lang]||fallback.fr;
+}
+
+/* ── Formater le texte ───────────────────────────────────── */
+function formatMsg(text){
   return text
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
     .replace(/\n/g,'<br>')
     .replace(/`([^`]+)`/g,'<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:11px;">$1</code>');
 }
 
-function ajouterMessage(role, text, typing=false) {
-  const msgs = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'chat-msg ' + (role==='user'?'user':'bot');
+/* ── Text-to-Speech ──────────────────────────────────────── */
+function _speak(text, lang){
+  if(!_ttsEnabled || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const clean = text.replace(/\*\*/g,'').replace(/[🌲📈📡🧪💧👥🌿🔴🟡✅🌊⚡🔢]/gu,'').replace(/<[^>]+>/g,'').substring(0,300);
+  const utt   = new SpeechSynthesisUtterance(clean);
+  utt.lang    = lang==='ar' ? 'ar-SA' : lang==='en' ? 'en-US' : 'fr-FR';
+  utt.rate    = 0.95;
+  window.speechSynthesis.speak(utt);
+}
 
-  if (typing) {
-    div.id = 'chat-typing-bubble';
-    div.innerHTML = `
-      <div class="chat-ava">🌿</div>
-      <div class="chat-typing"><span></span><span></span><span></span></div>`;
-  } else {
+/* ── Speech-to-Text ──────────────────────────────────────── */
+function startSTT(){
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){
+    showNotif('⚠️ Reconnaissance vocale non supportée sur ce navigateur'); return;
+  }
+  const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+  const rec = new SR();
+  rec.lang = 'fr-FR';
+  rec.continuous = false;
+  rec.interimResults = false;
+
+  const micBtn = document.getElementById('chat-mic');
+  if(micBtn){ micBtn.style.background='var(--red)'; micBtn.textContent='🔴'; }
+  _sttActive = true;
+
+  rec.onresult = e => {
+    const t = e.results[0][0].transcript;
+    const inp = document.getElementById('chat-input');
+    if(inp){ inp.value=t; envoyerChat(); }
+  };
+  rec.onerror = () => { showNotif('⚠️ Erreur microphone'); };
+  rec.onend = () => {
+    _sttActive=false;
+    if(micBtn){ micBtn.style.background='var(--green)'; micBtn.textContent='🎤'; }
+  };
+  rec.start();
+}
+
+/* ── Ajouter un message ───────────────────────────────────── */
+function ajouterMessage(role, text, typing=false){
+  const msgs = document.getElementById('chat-messages');
+  const div  = document.createElement('div');
+  div.className = 'chat-msg '+(role==='user'?'user':'bot');
+  if(typing){
+    div.id='chat-typing-bubble';
+    div.innerHTML=`<div class="chat-ava">🌿</div><div class="chat-typing"><span></span><span></span><span></span></div>`;
+  }else{
     const ava = role==='user'
       ? `<div class="chat-ava" style="background:var(--green);color:#fff;">${(CURRENT_USER||{}).avatar||'U'}</div>`
       : `<div class="chat-ava">🌿</div>`;
@@ -75,65 +170,72 @@ function ajouterMessage(role, text, typing=false) {
   return div;
 }
 
-async function envoyerChat() {
-  const inp = document.getElementById('chat-input');
-  const q   = inp.value.trim();
-  if (!q) return;
-  inp.value = '';
-  inp.style.height = 'auto';
-
-  document.getElementById('chat-send').disabled = true;
-  document.getElementById('chat-quick').style.display = 'none';
-
-  ajouterMessage('user', q);
-
-  // Show typing indicator
-  const tyBubble = ajouterMessage('bot', '', true);
-
-  await new Promise(r => setTimeout(r, 900 + Math.random()*600));
-
+/* ── Envoyer ─────────────────────────────────────────────── */
+async function envoyerChat(){
+  const inp  = document.getElementById('chat-input');
+  const q    = inp.value.trim();
+  if(!q) return;
+  inp.value=''; inp.style.height='auto';
+  document.getElementById('chat-send').disabled=true;
+  document.getElementById('chat-quick').style.display='none';
+  ajouterMessage('user',q);
+  const tyBubble = ajouterMessage('bot','',true);
+  await new Promise(r=>setTimeout(r,800+Math.random()*500));
   tyBubble.remove();
-  const rep = trouverReponse(q);
-  ajouterMessage('bot', rep);
-
-  document.getElementById('chat-send').disabled = false;
+  const rep = await trouverReponse(q);
+  ajouterMessage('bot',rep);
+  _speak(rep, _detectLang(q));
+  document.getElementById('chat-send').disabled=false;
   inp.focus();
 }
 
-function envoyerQuestion(q) {
-  document.getElementById('chat-input').value = q;
+function envoyerQuestion(q){
+  document.getElementById('chat-input').value=q;
   envoyerChat();
 }
 
-function toggleChat() {
-  chatOpen = !chatOpen;
-  const win = document.getElementById('chat-window');
-  const fab = document.getElementById('chat-fab-ico');
-  const badge = document.getElementById('chat-badge');
+/* ── Activer/désactiver voix ─────────────────────────────── */
+function toggleTTS(){
+  _ttsEnabled=!_ttsEnabled;
+  if(!_ttsEnabled) window.speechSynthesis?.cancel();
+  const btn=document.getElementById('chat-tts');
+  if(btn) btn.title=_ttsEnabled?'Désactiver la voix':'Activer la voix';
+  if(btn) btn.style.opacity=_ttsEnabled?'1':'0.4';
+  showNotif(_ttsEnabled?'🔊 Voix activée':'🔇 Voix désactivée');
+}
 
-  if (chatOpen) {
-    win.classList.add('open');
-    fab.textContent = '✕';
-    badge.style.display = 'none';
-    if (chatFirstOpen) {
-      chatFirstOpen = false;
-      setTimeout(()=>ajouterMessage('bot',
-        `🌿 Bonjour **${(CURRENT_USER||{}).prenom||''}** ! Je suis l'assistant AgriSmart.\n\nPosez-moi n'importe quelle question sur l'utilisation de la plateforme, les capteurs IoT, les algorithmes IA ou vos cultures. Je suis là pour vous aider ! 🌾`
-      ), 400);
+/* ── Ouvrir/Fermer ───────────────────────────────────────── */
+function toggleChat(){
+  chatOpen=!chatOpen;
+  const win=document.getElementById('chat-window');
+  const fab=document.getElementById('chat-fab-ico');
+  const badge=document.getElementById('chat-badge');
+  if(chatOpen){
+    win.classList.add('open'); fab.textContent='✕'; if(badge)badge.style.display='none';
+    if(chatFirstOpen){
+      chatFirstOpen=false;
+      setTimeout(()=>{
+        const lang=_detectLang('');
+        const greet={
+          fr:`🌿 Bonjour **${(CURRENT_USER||{}).prenom||''}** ! Je suis l'assistant AgriSmart.\n\nJe parle 🇫🇷 français, 🇩🇿 arabe et 🇬🇧 anglais. Je peux aussi **parler** 🔊 et **vous écouter** 🎤 !\n\nPosez-moi une question sur vos cultures, capteurs IoT, ou demandez les **données live** de vos capteurs. 🌾`,
+          ar:`🌿 مرحباً **${(CURRENT_USER||{}).prenom||''}** ! أنا مساعد AgriSmart.\n\nأتكلم 🇫🇷 فرنسي، 🇩🇿 عربي و 🇬🇧 إنجليزي. يمكنني **الكلام** 🔊 **والاستماع** 🎤 !\n\nاسألني عن المحاصيل أو المستشعرات أو **البيانات المباشرة**. 🌾`,
+          en:`🌿 Hello **${(CURRENT_USER||{}).prenom||''}**! I'm the AgriSmart assistant.\n\nI speak 🇫🇷 French, 🇩🇿 Arabic & 🇬🇧 English. I can also **talk** 🔊 and **listen** 🎤!\n\nAsk me about crops, IoT sensors, or request **live sensor data**. 🌾`,
+        };
+        const msg=greet[lang]||greet.fr;
+        ajouterMessage('bot',msg);
+        _speak(msg,lang);
+      },400);
     }
-    setTimeout(()=>document.getElementById('chat-input').focus(), 300);
-  } else {
-    win.classList.remove('open');
-    fab.textContent = '🤖';
+    setTimeout(()=>document.getElementById('chat-input')?.focus(),300);
+  }else{
+    win.classList.remove('open'); fab.textContent='🤖';
+    window.speechSynthesis?.cancel();
   }
 }
 
-// Show notification badge after 3 sec if not opened
 setTimeout(()=>{
-  if (!chatOpen && document.getElementById('chat-badge')) {
-    document.getElementById('chat-badge').style.display='flex';
-  }
-}, 3000);
+  if(!chatOpen){const b=document.getElementById('chat-badge');if(b)b.style.display='flex';}
+},3000);
 
 
 /* ═══════════════════════════════════════════════════════

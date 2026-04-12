@@ -60,6 +60,44 @@ const LANG = {
     mPrenom:'Prénom', mNom:'Nom', mLogin:'Identifiant de connexion',
     mPass:'Mot de passe', mRole:'Rôle', mZone:'Zone / Exploitation',
     mTel:'Téléphone', mStatut:'Statut',
+    // Capteurs
+    sTemp:'Température', sHumSol:'Humidité Sol', sPh:'pH du Sol',
+    sAzote:'Azote (N)', sPhosphore:'Phosphore (P)', sHumAir:'Humidité Air',
+    sLum:'Luminosité', sCo2:'CO₂',
+    // Statuts capteurs
+    stNormal:'Normal', stBon:'Bon', stSurveiller:'Surveiller',
+    stCritique:'Critique', stNeutre:'Neutre', stAcide:'Acide',
+    stSuffisant:'Suffisant', stOk:'OK', stHorsLigne:'hors-ligne',
+    // Cultures RF
+    cRiz:'Riz', cBle:'Blé', cMais:'Maïs', cCoton:'Coton',
+    cPoisChiche:'Pois chiche', cCafe:'Café', cTournesol:'Tournesol',
+    cTomate:'Tomate', cSoja:'Soja', cPomme:'Pomme de terre',
+    cMangue:'Mangue', cRaisin:'Raisin',
+    // RF sliders
+    rfPh:'🧪 pH du Sol', rfHumSol:'💧 Humidité Sol', rfAzote:'🌿 Azote (N)',
+    rfTemp:'🌡️ Température', rfPluie:'🌧️ Précipitations',
+    rfHumAir:'💨 Humidité Air', rfPhosphore:'⚗️ Phosphore (P)', rfPotassium:'🔬 Potassium (K)',
+    rfHint_ph:'3.0 Acide,6.5 Neutre,9.0 Alcalin',
+    rfHint_hs:'0% Sec,50%,100% Noyé',
+    rfHint_n:'0,70,140', rfHint_temp:'8°C,27°C,45°C',
+    rfHint_rain:'20mm,160mm,300mm', rfHint_hair:'14%,57%,100%',
+    rfHint_p:'0,72,145', rfHint_k:'0,100,205',
+    // Chat
+    chatTitle:'Assistant AgriSmart', chatSub:'IA · Disponible 24h/24',
+    // Notifs
+    notifWelcome:'✅ Bienvenue',
+    notifLogout:'👋 Déconnecté avec succès',
+    notifOffline:'⚠️ Mode hors-ligne (XAMPP non lancé)',
+    // Sidebar user
+    roleAdmin:'ADMIN', roleAgri:'AGRICULTEUR', roleTech:'TECHNICIEN',
+    // LSTM
+    lstmTitle:'Prévision LSTM — Séries Temporelles',
+    lstmSimTitle:'Simulateur LSTM — Prédiction du Rendement',
+    lstmVraiRaison:'Vrai Raisonnement',
+    lstmLancer:'🌾 Lancer la Prédiction LSTM',
+    lstmRendement:'Rendement Prédit', lstmUnit:'tonnes / hectare',
+    lstmBase:'Base saisonnière', lstmContrib:'Contrib. LSTM (h_t)', lstmDirect:'Effets directs',
+    lstmGates:'Portes LSTM — valeurs en temps réel',
   },
   ar: {
     loginTitle:'منصة الزراعة الذكية والدقيقة',
@@ -91,6 +129,43 @@ const LANG = {
     mPrenom:'الاسم الأول', mNom:'اللقب', mLogin:'معرّف الدخول',
     mPass:'كلمة المرور', mRole:'الدور', mZone:'المنطقة / المزرعة',
     mTel:'الهاتف', mStatut:'الحالة',
+    // Capteurs
+    sTemp:'درجة الحرارة', sHumSol:'رطوبة التربة', sPh:'حموضة التربة',
+    sAzote:'النيتروجين (N)', sPhosphore:'الفسفور (P)', sHumAir:'رطوبة الهواء',
+    sLum:'الإضاءة', sCo2:'ثاني أكسيد الكربون',
+    // Statuts
+    stNormal:'طبيعي', stBon:'جيد', stSurveiller:'مراقبة',
+    stCritique:'حرج', stNeutre:'معتدل', stAcide:'حامضي',
+    stSuffisant:'كافٍ', stOk:'موافق', stHorsLigne:'غير متصل',
+    // Cultures RF
+    cRiz:'أرز', cBle:'قمح', cMais:'ذرة', cCoton:'قطن',
+    cPoisChiche:'حمص', cCafe:'قهوة', cTournesol:'عباد الشمس',
+    cTomate:'طماطم', cSoja:'صويا', cPomme:'بطاطس',
+    cMangue:'مانغو', cRaisin:'عنب',
+    // RF sliders
+    rfPh:'🧪 حموضة التربة', rfHumSol:'💧 رطوبة التربة', rfAzote:'🌿 النيتروجين (N)',
+    rfTemp:'🌡️ درجة الحرارة', rfPluie:'🌧️ الأمطار',
+    rfHumAir:'💨 رطوبة الهواء', rfPhosphore:'⚗️ الفسفور (P)', rfPotassium:'🔬 البوتاسيوم (K)',
+    rfHint_ph:'3.0 حامضي,6.5 معتدل,9.0 قلوي',
+    rfHint_hs:'0% جاف,50%,100% مشبع',
+    rfHint_n:'0,70,140', rfHint_temp:'8°C,27°C,45°C',
+    rfHint_rain:'20mm,160mm,300mm', rfHint_hair:'14%,57%,100%',
+    rfHint_p:'0,72,145', rfHint_k:'0,100,205',
+    // Chat
+    chatTitle:'مساعد AgriSmart', chatSub:'ذكاء اصطناعي · متاح 24/7',
+    // Notifs
+    notifWelcome:'✅ مرحباً', notifLogout:'👋 تم تسجيل الخروج',
+    notifOffline:'⚠️ وضع بدون اتصال (XAMPP غير مشغل)',
+    // Sidebar user
+    roleAdmin:'مدير', roleAgri:'مزارع', roleTech:'تقني',
+    // LSTM
+    lstmTitle:'توقعات LSTM — السلاسل الزمنية',
+    lstmSimTitle:'محاكي LSTM — التنبؤ بالمحصول',
+    lstmVraiRaison:'حساب حقيقي',
+    lstmLancer:'🌾 تشغيل توقع LSTM',
+    lstmRendement:'المحصول المتوقع', lstmUnit:'طن / هكتار',
+    lstmBase:'القاعدة الموسمية', lstmContrib:'مساهمة LSTM (h_t)', lstmDirect:'تأثيرات مباشرة',
+    lstmGates:'بوابات LSTM — القيم الحية',
   },
   en: {
     loginTitle:'Intelligent Precision Agriculture Platform',
@@ -122,6 +197,43 @@ const LANG = {
     mPrenom:'First Name', mNom:'Last Name', mLogin:'Login ID',
     mPass:'Password', mRole:'Role', mZone:'Zone / Farm',
     mTel:'Phone', mStatut:'Status',
+    // Capteurs
+    sTemp:'Temperature', sHumSol:'Soil Moisture', sPh:'Soil pH',
+    sAzote:'Nitrogen (N)', sPhosphore:'Phosphorus (P)', sHumAir:'Air Humidity',
+    sLum:'Light', sCo2:'CO₂',
+    // Statuts
+    stNormal:'Normal', stBon:'Good', stSurveiller:'Monitor',
+    stCritique:'Critical', stNeutre:'Neutral', stAcide:'Acid',
+    stSuffisant:'Sufficient', stOk:'OK', stHorsLigne:'offline',
+    // Cultures RF
+    cRiz:'Rice', cBle:'Wheat', cMais:'Corn', cCoton:'Cotton',
+    cPoisChiche:'Chickpea', cCafe:'Coffee', cTournesol:'Sunflower',
+    cTomate:'Tomato', cSoja:'Soybean', cPomme:'Potato',
+    cMangue:'Mango', cRaisin:'Grape',
+    // RF sliders
+    rfPh:'🧪 Soil pH', rfHumSol:'💧 Soil Moisture', rfAzote:'🌿 Nitrogen (N)',
+    rfTemp:'🌡️ Temperature', rfPluie:'🌧️ Rainfall',
+    rfHumAir:'💨 Air Humidity', rfPhosphore:'⚗️ Phosphorus (P)', rfPotassium:'🔬 Potassium (K)',
+    rfHint_ph:'3.0 Acid,6.5 Neutral,9.0 Alkaline',
+    rfHint_hs:'0% Dry,50%,100% Saturated',
+    rfHint_n:'0,70,140', rfHint_temp:'8°C,27°C,45°C',
+    rfHint_rain:'20mm,160mm,300mm', rfHint_hair:'14%,57%,100%',
+    rfHint_p:'0,72,145', rfHint_k:'0,100,205',
+    // Chat
+    chatTitle:'AgriSmart Assistant', chatSub:'AI · Available 24/7',
+    // Notifs
+    notifWelcome:'✅ Welcome', notifLogout:'👋 Logged out',
+    notifOffline:'⚠️ Offline mode (XAMPP not running)',
+    // Sidebar user
+    roleAdmin:'ADMIN', roleAgri:'FARMER', roleTech:'TECHNICIAN',
+    // LSTM
+    lstmTitle:'LSTM Forecast — Time Series',
+    lstmSimTitle:'LSTM Simulator — Yield Prediction',
+    lstmVraiRaison:'Real Computation',
+    lstmLancer:'🌾 Run LSTM Prediction',
+    lstmRendement:'Predicted Yield', lstmUnit:'tons / hectare',
+    lstmBase:'Seasonal base', lstmContrib:'LSTM contrib (h_t)', lstmDirect:'Direct effects',
+    lstmGates:'LSTM Gates — live values',
   },
 };
 
@@ -240,6 +352,21 @@ function applyLang() {
     if (['Identifiant de connexion','Login ID','معرّف الدخول'].includes(t))
       lbl.textContent = T('mLogin');
   });
+
+  /* Chat header */
+  ['chat-head-title', 'chat-head-sub'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = id === 'chat-head-title' ? T('chatTitle') : T('chatSub');
+  });
+  const chatFab = document.getElementById('chat-fab');
+  if (chatFab) chatFab.title = T('chatTitle');
+  
+  /* Boutons rapides du chat — mettre à jour le placeholder */
+  const chatInp = document.getElementById('chat-input');
+  if (chatInp) {
+    const ph = {'fr':'Posez votre question…','ar':'اكتب سؤالك…','en':'Ask your question…'};
+    chatInp.placeholder = ph[_lang] || ph.fr;
+  }
 
   /* RTL */
   document.documentElement.dir  = _lang === 'ar' ? 'rtl' : 'ltr';

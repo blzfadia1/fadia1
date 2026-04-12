@@ -1707,6 +1707,7 @@ input[type=range]::-webkit-slider-thumb{
 <script src="js/08_admin.js"></script>
 <script src="js/09_ui.js"></script>
 <script src="js/10_chat_mysql.js"></script>
+<script src="js/11_settings.js"></script>
 
 <!-- ████ MODAL UTILISATEUR ████ -->
 <div class="modal-overlay" id="modal-user">
@@ -1795,27 +1796,32 @@ input[type=range]::-webkit-slider-thumb{
   <div class="chat-head">
     <div class="chat-head-ava">🌿</div>
     <div class="chat-head-info">
-      <h4>Assistant AgriSmart</h4>
-      <p>IA · Disponible 24h/24</p>
+      <h4 id="chat-head-title">Assistant AgriSmart</h4>
+      <p id="chat-head-sub">IA · FR / AR / EN · Voix 🎤</p>
     </div>
+    <button id="chat-tts" onclick="toggleTTS()" title="Désactiver la voix"
+      style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;opacity:1;transition:.2s;">🔊</button>
     <button class="chat-head-close" onclick="toggleChat()">✕</button>
   </div>
 
   <div class="chat-messages" id="chat-messages"></div>
 
   <div class="chat-quick" id="chat-quick">
-    <button class="chat-q-btn" onclick="envoyerQuestion('Comment utiliser le Random Forest ?')">🌲 Random Forest</button>
+    <button class="chat-q-btn" onclick="envoyerQuestion('Comment utiliser le Random Forest ?')">🌲 RF</button>
     <button class="chat-q-btn" onclick="envoyerQuestion('Comment fonctionne le LSTM ?')">📈 LSTM</button>
-    <button class="chat-q-btn" onclick="envoyerQuestion('Comment configurer LoRaWAN ?')">📡 LoRaWAN</button>
-    <button class="chat-q-btn" onclick="envoyerQuestion('Mon sol est trop acide, que faire ?')">🧪 Sol acide</button>
-    <button class="chat-q-btn" onclick="envoyerQuestion('Quels capteurs utilise le système ?')">📟 Capteurs</button>
-    <button class="chat-q-btn" onclick="envoyerQuestion('Comment ajouter un utilisateur ?')">👤 Utilisateur</button>
+    <button class="chat-q-btn" onclick="envoyerQuestion('capteur iot données live')">📡 Capteurs live</button>
+    <button class="chat-q-btn" onclick="envoyerQuestion('Mon sol est trop acide, que faire ?')">🧪 Sol</button>
+    <button class="chat-q-btn" onclick="envoyerQuestion('Comment gérer l irrigation ?')">💧 Irrigation</button>
+    <button class="chat-q-btn" onclick="envoyerQuestion('مرحبا ساعدني')">🇩🇿 عربي</button>
+    <button class="chat-q-btn" onclick="envoyerQuestion('Hello help me')">🇬🇧 EN</button>
   </div>
 
   <div class="chat-input-row">
-    <textarea class="chat-input" id="chat-input" placeholder="Posez votre question…" rows="1"
+    <textarea class="chat-input" id="chat-input" placeholder="Posez votre question… / اسأل / Ask…" rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerChat();}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+    <button id="chat-mic" onclick="startSTT()" title="Parler au microphone"
+      style="width:38px;height:38px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-end;margin-right:4px;transition:.2s;">🎤</button>
     <button class="chat-send" id="chat-send" onclick="envoyerChat()">➤</button>
   </div>
 </div>
@@ -1829,6 +1835,7 @@ input[type=range]::-webkit-slider-thumb{
 var _dark=false;
 try{if(localStorage.getItem('as_dark')==='1'){_dark=true;document.documentElement.classList.add('dark');}}catch(e){}
 window.AS_toggleDark=function(){
+  if(typeof toggleDarkMode === 'function') { toggleDarkMode(); return; }
   _dark=!_dark;
   document.documentElement.classList.toggle('dark',_dark);
   var b=document.getElementById('btn-dark');
@@ -2127,7 +2134,7 @@ function applyLang(){
   /* nav items — rebuild labels */
   var navMap={
     dashboard:l.navDashboard, rf:l.navRF, lstm:l.navLSTM, iot:l.navIoT,
-    history:l.navHistory, admin:l.navAdmin, guide:l.navGuide
+    history:l.navHistory, admin:l.navAdmin
   };
   Object.keys(navMap).forEach(function(id){
     var ni=document.getElementById('nav-'+id);
@@ -2332,6 +2339,8 @@ function applyLang(){
 }
 
 window.AS_setLang=function(lang){
+  // Synchroniser avec 11_settings.js
+  if(typeof setLang === 'function') { setLang(lang); }
   if(!D[lang])return;
   _lang=lang;
   try{localStorage.setItem('as_lang',lang);}catch(e){}

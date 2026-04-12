@@ -9,31 +9,41 @@
 /* ═══════════════════════════════════════════════════════
    RANDOM FOREST PAGE
 ═══════════════════════════════════════════════════════ */
-const CULTURES = [
-  { nom:'Riz',        emoji:'🌾', c:'#1a7abf', cond:{ ph:[5,7],   hs:[60,100], n:[60,130], temp:[20,30], rain:[150,300] }},
-  { nom:'Blé',        emoji:'🌾', c:'#c88a00', cond:{ ph:[5.5,7.5],hs:[25,60], n:[55,100], temp:[12,25], rain:[40,150]  }},
-  { nom:'Maïs',       emoji:'🌽', c:'#16a34a', cond:{ ph:[5.5,7], hs:[30,70],  n:[70,140], temp:[20,35], rain:[50,200]  }},
-  { nom:'Coton',      emoji:'🌿', c:'#c04030', cond:{ ph:[6,8],   hs:[15,50],  n:[25,100], temp:[25,40], rain:[20,100]  }},
-  { nom:'Pois chiche',emoji:'🫘', c:'#8b5cf6', cond:{ ph:[5.5,7], hs:[20,50],  n:[0,45],   temp:[15,30], rain:[25,100]  }},
-  { nom:'Café',       emoji:'☕', c:'#7c4a1e', cond:{ ph:[5,6.5], hs:[40,75],  n:[80,140], temp:[18,30], rain:[100,250] }},
-  { nom:'Tournesol',  emoji:'🌻', c:'#d97706', cond:{ ph:[6,7.5], hs:[25,55],  n:[30,90],  temp:[20,30], rain:[30,130]  }},
-  { nom:'Tomate',     emoji:'🍅', c:'#dc2626', cond:{ ph:[6,7],   hs:[40,80],  n:[60,120], temp:[18,28], rain:[60,150]  }},
-  { nom:'Soja',       emoji:'🌱', c:'#4a8a20', cond:{ ph:[6,7],   hs:[40,70],  n:[0,60],   temp:[20,30], rain:[60,175]  }},
-  { nom:'Pomme de terre',emoji:'🥔',c:'#a06020',cond:{ ph:[5,6.5],hs:[40,70],  n:[80,130], temp:[10,22], rain:[50,150]  }},
-  { nom:'Mangue',     emoji:'🥭', c:'#d07000', cond:{ ph:[5.5,7.5],hs:[25,60], n:[30,80],  temp:[24,38], rain:[50,200]  }},
-  { nom:'Raisin',     emoji:'🍇', c:'#6030a0', cond:{ ph:[6,7.5], hs:[25,55],  n:[20,70],  temp:[16,30], rain:[30,120]  }},
+// Données des cultures — noms traduits dynamiquement via T()
+const CULTURES_DATA = [
+  { key:'cRiz',   emoji:'🌾', c:'#1a7abf', cond:{ ph:[5,7],   hs:[60,100], n:[60,130], temp:[20,30], rain:[150,300] }},
+  { key:'cBle',   emoji:'🌾', c:'#c88a00', cond:{ ph:[5.5,7.5],hs:[25,60], n:[55,100], temp:[12,25], rain:[40,150]  }},
+  { key:'cMais',  emoji:'🌽', c:'#16a34a', cond:{ ph:[5.5,7], hs:[30,70],  n:[70,140], temp:[20,35], rain:[50,200]  }},
+  { key:'cCoton', emoji:'🌿', c:'#c04030', cond:{ ph:[6,8],   hs:[15,50],  n:[25,100], temp:[25,40], rain:[20,100]  }},
+  { key:'cPoisChiche',emoji:'🫘',c:'#8b5cf6',cond:{ ph:[5.5,7],hs:[20,50], n:[0,45],   temp:[15,30], rain:[25,100]  }},
+  { key:'cCafe',  emoji:'☕', c:'#7c4a1e', cond:{ ph:[5,6.5], hs:[40,75],  n:[80,140], temp:[18,30], rain:[100,250] }},
+  { key:'cTournesol',emoji:'🌻',c:'#d97706',cond:{ ph:[6,7.5], hs:[25,55], n:[30,90],  temp:[20,30], rain:[30,130]  }},
+  { key:'cTomate',emoji:'🍅', c:'#dc2626', cond:{ ph:[6,7],   hs:[40,80],  n:[60,120], temp:[18,28], rain:[60,150]  }},
+  { key:'cSoja',  emoji:'🌱', c:'#4a8a20', cond:{ ph:[6,7],   hs:[40,70],  n:[0,60],   temp:[20,30], rain:[60,175]  }},
+  { key:'cPomme', emoji:'🥔', c:'#a06020', cond:{ ph:[5,6.5], hs:[40,70],  n:[80,130], temp:[10,22], rain:[50,150]  }},
+  { key:'cMangue',emoji:'🥭', c:'#d07000', cond:{ ph:[5.5,7.5],hs:[25,60], n:[30,80],  temp:[24,38], rain:[50,200]  }},
+  { key:'cRaisin',emoji:'🍇', c:'#6030a0', cond:{ ph:[6,7.5], hs:[25,55],  n:[20,70],  temp:[16,30], rain:[30,120]  }},
 ];
 
+// Getter traduit — toujours à jour avec la langue active
+function getCultures() {
+  const _t = typeof T === 'function' ? T : k => k;
+  return CULTURES_DATA.map(c => ({ ...c, nom: _t(c.key) }));
+}
+// Compatibilité avec le code existant
+let CULTURES = getCultures();
+
 function buildRFPage() {
+  const _t = typeof T === 'function' ? T : k => k;
   const fields = [
-    { id:'s-ph',   label:'🧪 pH du Sol',      min:30,max:90, def:65, fmt:v=>(v/10).toFixed(1), hints:['3.0 Acide','6.5 Neutre','9.0 Alcalin'] },
-    { id:'s-hs',   label:'💧 Humidité Sol',   min:0, max:100,def:45, fmt:v=>v+'%',              hints:['0% Sec','50%','100% Noyé'] },
-    { id:'s-n',    label:'🌿 Azote (N)',       min:0, max:140,def:60, fmt:v=>v+' kg/ha',         hints:['0','70','140'] },
-    { id:'s-temp', label:'🌡️ Température',    min:8, max:45, def:25, fmt:v=>v+'°C',             hints:['8°C','27°C','45°C'] },
-    { id:'s-rain', label:'🌧️ Précipitations', min:20,max:300,def:85, fmt:v=>v+' mm',            hints:['20mm','160mm','300mm'] },
-    { id:'s-hair', label:'💨 Humidité Air',   min:14,max:100,def:65, fmt:v=>v+'%',              hints:['14%','57%','100%'] },
-    { id:'s-p',    label:'⚗️ Phosphore (P)',  min:0, max:145,def:40, fmt:v=>v+' kg/ha',         hints:['0','72','145'] },
-    { id:'s-k',    label:'🔬 Potassium (K)',  min:0, max:205,def:40, fmt:v=>v+' kg/ha',         hints:['0','100','205'] },
+    { id:'s-ph',   label:_t('rfPh'),       min:30,max:90, def:65, fmt:v=>(v/10).toFixed(1), hints:_t('rfHint_ph').split(',') },
+    { id:'s-hs',   label:_t('rfHumSol'),   min:0, max:100,def:45, fmt:v=>v+'%',              hints:_t('rfHint_hs').split(',') },
+    { id:'s-n',    label:_t('rfAzote'),     min:0, max:140,def:60, fmt:v=>v+' kg/ha',         hints:_t('rfHint_n').split(',') },
+    { id:'s-temp', label:_t('rfTemp'),      min:8, max:45, def:25, fmt:v=>v+'°C',             hints:_t('rfHint_temp').split(',') },
+    { id:'s-rain', label:_t('rfPluie'),     min:20,max:300,def:85, fmt:v=>v+' mm',            hints:_t('rfHint_rain').split(',') },
+    { id:'s-hair', label:_t('rfHumAir'),    min:14,max:100,def:65, fmt:v=>v+'%',              hints:_t('rfHint_hair').split(',') },
+    { id:'s-p',    label:_t('rfPhosphore'), min:0, max:145,def:40, fmt:v=>v+' kg/ha',         hints:_t('rfHint_p').split(',') },
+    { id:'s-k',    label:_t('rfPotassium'), min:0, max:205,def:40, fmt:v=>v+' kg/ha',         hints:_t('rfHint_k').split(',') },
   ];
   document.getElementById('rf-fields').innerHTML = fields.map(f=>`
     <div class="field-row">
@@ -69,7 +79,7 @@ function lancerRF() {
       p:    parseFloat(document.getElementById('s-p').value),
       k:    parseFloat(document.getElementById('s-k').value),
     };
-    const N=100, votes=new Array(CULTURES.length).fill(0);
+    const CULTURES = getCultures(); const N=100, votes=new Array(CULTURES.length).fill(0);
     for(let t=0;t<N;t++){
       const n=()=>1+(Math.random()-.5)*.28;
       const sc=CULTURES.map(c=>

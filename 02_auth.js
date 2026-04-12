@@ -68,7 +68,7 @@ async function doLogin() {
       document.getElementById('screen-login').classList.remove('active');
       document.getElementById('screen-app').classList.add('active');
       initApp();
-      showNotif('⚠️ Mode hors-ligne (XAMPP non lancé)');
+      showNotif(typeof T==='function' ? T('notifOffline') : '⚠️ Mode hors-ligne');
     } else {
       showLoginError('Erreur réseau. Vérifiez que XAMPP est lancé.');
     }
@@ -93,7 +93,7 @@ function doLogout() {
   state.role   = 'admin';
   document.getElementById('screen-app').classList.remove('active');
   document.getElementById('screen-login').classList.add('active');
-  showNotif('👋 Déconnecté avec succès');
+  showNotif(typeof T==='function' ? T('notifLogout') : '👋 Déconnecté avec succès');
 }
 
 /* ═══════════════════════════════════════════════════════
