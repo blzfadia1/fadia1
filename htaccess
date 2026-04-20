@@ -1,0 +1,35 @@
+# ============================================================
+#  .htaccess — AgriSmart / api/
+#  Placer dans : C:/xampp/htdocs/agrismart/api/.htaccess
+# ============================================================
+
+# ── Bloquer l'accès direct aux fichiers sensibles ────────────
+<FilesMatch "^(fix_users|test|config)\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# ── Désactiver la liste des fichiers du dossier ──────────────
+Options -Indexes
+
+# ── En-têtes de sécurité HTTP ────────────────────────────────
+<IfModule mod_headers.c>
+    # Empêcher le navigateur de deviner le type MIME
+    Header set X-Content-Type-Options "nosniff"
+
+    # Empêcher l'inclusion dans des iframes (clickjacking)
+    Header set X-Frame-Options "SAMEORIGIN"
+
+    # Désactiver le cache pour les réponses API
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+</IfModule>
+
+# ── Bloquer les extensions dangereuses ──────────────────────
+<FilesMatch "\.(bak|sql|log|env|git|htpasswd)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# ── Désactiver la signature du serveur ──────────────────────
+ServerSignature Off

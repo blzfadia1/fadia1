@@ -52,8 +52,8 @@ html.dark .data-table th{background:#0f172a;}html.dark .data-table tr:hover{back
 .settings-btn:hover{background:var(--green-bg);border-color:var(--green-xl);}
 .lang-select{height:34px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;padding:0 8px;cursor:pointer;outline:none;}
 .login-lang-row{display:flex;justify-content:center;gap:8px;margin-bottom:18px;}
-.login-lang-btn{padding:6px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;transition:.15s;}
-.login-lang-btn:hover,.login-lang-btn.active{background:rgba(255,255,255,.2);color:#fff;border-color:rgba(255,255,255,.35);}
+.login-lang-btn{padding:6px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:rgba(255,255,255,.55);font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;transition:.15s;}
+.login-lang-btn:hover,.login-lang-btn.active{background:rgba(34,197,94,.25);color:#fff;border-color:rgba(34,197,94,.5);}
 
 /* ═══════════════════════════════════════════════════════
    SCREENS SYSTEM
@@ -62,136 +62,266 @@ html.dark .data-table th{background:#0f172a;}html.dark .data-table tr:hover{back
 .screen.active{display:flex;}
 
 /* ═══════════════════════════════════════════════════════
-   ██ LOGIN SCREEN
+   ██ LOGIN SCREEN — SPLIT PANEL DESIGN
 ═══════════════════════════════════════════════════════ */
 #screen-login {
-  background: linear-gradient(135deg, #0f2d0f 0%, #14532d 40%, #166534 100%);
+  background: #0a1f0a;
   position:relative;
-  align-items:center;
-  justify-content:center;
-  overflow-y:auto;
-  overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;
-  padding:20px 0;
+  align-items:stretch;
+  justify-content:stretch;
+  overflow:hidden;
 }
-#screen-login::before {
+
+/* ── Panneau gauche : photo agriculteur ── */
+.login-photo-panel {
+  flex: 1 1 55%;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+}
+.login-photo-panel::before {
   content:'';
   position:absolute;inset:0;
-  background:
-    radial-gradient(ellipse 600px 400px at 20% 50%, rgba(34,197,94,.12) 0%, transparent 70%),
-    radial-gradient(ellipse 400px 600px at 80% 30%, rgba(22,163,74,.1) 0%, transparent 70%);
+  background-image: url('farmer.jpg');
+  background-size:cover;
+  background-position:center 30%;
+  filter:brightness(.72) saturate(1.1);
+  transition:transform 8s ease;
+  animation: slowZoom 12s ease-in-out infinite alternate;
 }
-.login-particles {
-  position:absolute;inset:0;overflow:hidden;pointer-events:none;
+@keyframes slowZoom {
+  from { transform: scale(1); }
+  to   { transform: scale(1.06); }
 }
-.particle {
-  position:absolute;
-  border-radius:50%;
-  background:rgba(34,197,94,.15);
-  animation:float linear infinite;
+.login-photo-panel::after {
+  content:'';
+  position:absolute;inset:0;
+  background: linear-gradient(
+    to right,
+    transparent 40%,
+    rgba(10,31,10,.85) 100%
+  ), linear-gradient(
+    to top,
+    rgba(10,31,10,.7) 0%,
+    transparent 50%
+  );
 }
-@keyframes float {
-  0%{transform:translateY(100vh) rotate(0);opacity:0;}
-  10%{opacity:1;}
-  90%{opacity:1;}
-  100%{transform:translateY(-100px) rotate(720deg);opacity:0;}
+.login-photo-overlay {
+  position:relative;z-index:2;
+  padding:48px 52px;
+}
+.login-photo-badge {
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(34,197,94,.18);
+  border:1px solid rgba(34,197,94,.35);
+  border-radius:100px;
+  padding:7px 18px;
+  font-size:12px;font-weight:700;color:#86efac;
+  letter-spacing:.8px;text-transform:uppercase;
+  margin-bottom:20px;
+  backdrop-filter:blur(8px);
+}
+.login-photo-badge span { font-size:15px; }
+.login-photo-headline {
+  font-size:clamp(28px,3.5vw,46px);
+  font-weight:900;
+  color:#fff;
+  line-height:1.1;
+  letter-spacing:-1.5px;
+  margin-bottom:16px;
+  text-shadow:0 2px 20px rgba(0,0,0,.4);
+}
+.login-photo-headline em {
+  font-style:normal;
+  color:#86efac;
+}
+.login-photo-sub {
+  font-size:15px;
+  color:rgba(255,255,255,.65);
+  line-height:1.7;
+  max-width:400px;
+  margin-bottom:32px;
+}
+.login-photo-stats {
+  display:flex;gap:28px;
+}
+.lps-item {
+  display:flex;flex-direction:column;gap:4px;
+}
+.lps-val {
+  font-size:22px;font-weight:800;color:#fff;
+  letter-spacing:-1px;
+}
+.lps-val span { color:#86efac; font-size:14px; }
+.lps-label {
+  font-size:11px;font-weight:600;
+  color:rgba(255,255,255,.45);
+  text-transform:uppercase;letter-spacing:.8px;
 }
 
-.login-box {
-  position:relative;z-index:2;
-  background:rgba(255,255,255,.06);
-  backdrop-filter:blur(20px);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:28px;
-  padding:48px 44px;
-  width:440px;
-  box-shadow:0 32px 80px rgba(0,0,0,.4);
+/* ── Panneau droit : formulaire ── */
+.login-form-panel {
+  flex: 0 0 440px;
+  background: linear-gradient(160deg, #0c2610 0%, #14532d 55%, #1a6b3a 100%);
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+  padding:36px 44px 32px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  position:relative;
+  z-index:2;
+  -webkit-overflow-scrolling:touch;
 }
-.login-logo {
-  text-align:center;
-  margin-bottom:36px;
+.login-form-panel::-webkit-scrollbar{width:4px;}
+.login-form-panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px;}
+.login-form-panel::before {
+  content:'';
+  position:absolute;top:-60px;right:-60px;
+  width:220px;height:220px;
+  background:radial-gradient(circle, rgba(34,197,94,.18) 0%, transparent 70%);
+  pointer-events:none;
 }
-.login-logo .logo-circle {
-  width:72px;height:72px;
-  background:linear-gradient(135deg,var(--green-l),var(--green));
-  border-radius:20px;
-  display:inline-flex;align-items:center;justify-content:center;
-  font-size:32px;
-  margin-bottom:14px;
-  box-shadow:0 8px 24px rgba(34,197,94,.4);
+.login-form-panel::after {
+  content:'';
+  position:absolute;bottom:-40px;left:-40px;
+  width:180px;height:180px;
+  background:radial-gradient(circle, rgba(22,163,74,.12) 0%, transparent 70%);
+  pointer-events:none;
 }
-.login-logo h1 {
-  font-size:28px;font-weight:800;color:#fff;letter-spacing:-.5px;
+.login-form-logo {
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:24px;
 }
-.login-logo p {font-size:13px;color:rgba(255,255,255,.6);margin-top:4px;}
+.login-form-logo .logo-circle {
+  width:46px;height:46px;
+  background:linear-gradient(135deg,#22c55e,#16a34a);
+  border-radius:13px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;
+  box-shadow:0 4px 16px rgba(34,197,94,.45);
+  flex-shrink:0;
+}
+.login-form-logo h1 {
+  font-size:20px;font-weight:800;color:#fff;letter-spacing:-.5px;
+}
+.login-form-logo p {font-size:10px;color:rgba(255,255,255,.5);margin-top:1px;font-weight:500;line-height:1.4;}
+.login-form-title {
+  font-size:24px;font-weight:800;color:#fff;letter-spacing:-.8px;
+  margin-bottom:4px;
+}
+.login-form-subtitle {
+  font-size:12px;color:rgba(255,255,255,.5);margin-bottom:20px;line-height:1.5;
+}
 
 .role-tabs {
-  display:flex;gap:6px;
-  background:rgba(0,0,0,.2);
-  border-radius:12px;padding:4px;
-  margin-bottom:28px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+  margin-bottom:24px;
 }
 .role-tab {
-  flex:1;padding:9px;
-  border-radius:9px;
-  border:none;
+  padding:9px 6px;
+  border-radius:10px;
+  border:1.5px solid rgba(255,255,255,.14);
   font-family:'Outfit',sans-serif;
-  font-size:13px;font-weight:600;
+  font-size:12px;font-weight:700;
   cursor:pointer;
-  transition:.2s;
+  transition:.18s;
   color:rgba(255,255,255,.5);
-  background:transparent;
-  display:flex;align-items:center;justify-content:center;gap:6px;
+  background:rgba(255,255,255,.07);
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  letter-spacing:.2px;
+}
+.role-tab:hover {
+  border-color:rgba(34,197,94,.5);color:rgba(255,255,255,.85);background:rgba(34,197,94,.12);
 }
 .role-tab.active {
-  background:rgba(255,255,255,.12);
+  background:rgba(34,197,94,.2);
+  border-color:#22c55e;
   color:#fff;
-  box-shadow:0 2px 8px rgba(0,0,0,.2);
+  box-shadow:0 0 0 3px rgba(34,197,94,.15);
 }
 
 .inp-group {margin-bottom:16px;}
 .inp-group label {
-  display:block;font-size:12px;font-weight:600;
+  display:block;font-size:11px;font-weight:700;
   color:rgba(255,255,255,.6);
-  margin-bottom:7px;letter-spacing:.5px;text-transform:uppercase;
+  margin-bottom:7px;letter-spacing:.6px;text-transform:uppercase;
 }
 .inp-group input {
   width:100%;
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.09);
+  border:1.5px solid rgba(255,255,255,.15);
   border-radius:12px;
   padding:13px 16px;
   color:#fff;
   font-family:'Outfit',sans-serif;
-  font-size:16px;
+  font-size:15px;
   outline:none;
   transition:.2s;
 }
 .inp-group input::placeholder{color:rgba(255,255,255,.3);}
-.inp-group input:focus{border-color:var(--green-l);background:rgba(255,255,255,.12);}
+.inp-group input:focus{
+  border-color:#22c55e;
+  background:rgba(255,255,255,.14);
+  box-shadow:0 0 0 3px rgba(34,197,94,.2);
+}
 
 .btn-login {
-  width:100%;margin-top:8px;
-  background:linear-gradient(135deg,var(--green) 0%,var(--green-l) 100%);
-  color:#fff;border:none;border-radius:14px;
-  padding:15px;
-  font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;
+  width:100%;margin-top:6px;
+  background:linear-gradient(135deg,#16a34a 0%,#22c55e 100%);
+  color:#fff;border:none;border-radius:12px;
+  padding:14px;
+  font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;
   cursor:pointer;transition:.2s;
-  box-shadow:0 4px 20px rgba(34,197,94,.4);
+  box-shadow:0 4px 20px rgba(34,197,94,.45);
   letter-spacing:.3px;
+  position:relative;overflow:hidden;
 }
-.btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(34,197,94,.5);}
+.btn-login::after {
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);
+  border-radius:inherit;
+}
+.btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(34,197,94,.55);}
 
 .login-hint {
   margin-top:20px;
-  background:rgba(255,255,255,.06);
-  border-radius:12px;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:10px;
   padding:12px 14px;
   font-size:12px;
   color:rgba(255,255,255,.5);
   line-height:1.8;
 }
-.login-hint strong{color:rgba(255,255,255,.8);}
+.login-hint strong{color:#86efac;}
+.login-particles {
+  position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1;
+}
+.particle {
+  position:absolute;
+  border-radius:50%;
+  background:rgba(34,197,94,.2);
+  animation:float linear infinite;
+}
+@keyframes float {
+  0%{transform:translateY(100vh) rotate(0);opacity:0;}
+  10%{opacity:.8;}
+  90%{opacity:.8;}
+  100%{transform:translateY(-100px) rotate(720deg);opacity:0;}
+}
+
+/* ── Responsive login ── */
+@media(max-width:900px){
+  .login-photo-panel{ display:none; }
+  .login-form-panel{
+    flex:1;
+    max-width:100%;
+    padding:40px 28px;
+  }
+}
 
 /* ═══════════════════════════════════════════════════════
    ██ APP SHELL (sidebar + content)
@@ -881,7 +1011,7 @@ input[type=range]::-webkit-slider-thumb{
   .topbar{padding:0 14px;}
   .topbar-title{font-size:15px;}
   .topbar-badge{display:none;}
-  .login-box{width:95%;max-width:420px;padding:32px 24px;}
+  /* login panel responsive handled in login CSS */
   .content-area{padding-bottom:0;}
 }
 
@@ -925,16 +1055,7 @@ input[type=range]::-webkit-slider-thumb{
   .stat-val{font-size:20px;}
   .stat-icon{width:38px;height:38px;font-size:18px;}
 
-  /* Login */
-  .login-box{
-    width:94vw;max-width:100%;
-    padding:28px 20px;
-    border-radius:20px;
-    margin:16px;
-  }
-  .login-logo h1{font-size:22px;}
-  .login-logo .logo-circle{width:56px;height:56px;font-size:26px;}
-  .role-tab{font-size:11px;padding:7px 4px;}
+  /* Login mobile handled in login CSS */
 
   /* RF form */
   .g13{grid-template-columns:1fr;}
@@ -987,7 +1108,7 @@ input[type=range]::-webkit-slider-thumb{
   .role-tab{justify-content:flex-start;padding:10px 14px;}
   .page{padding:10px 10px 80px;}
   .stat-val{font-size:18px;}
-  .login-box{padding:22px 16px;}
+  /* login handled in login CSS */
   .mobile-nav-items{gap:0;}
   .mob-nav-item{min-width:40px;padding:5px 4px;font-size:8px;}
   .mob-nav-item .mni{font-size:18px;}
@@ -1085,8 +1206,10 @@ input[type=range]::-webkit-slider-thumb{
 /* ════════════════════════════════
    CHATBOT
 ════════════════════════════════ */
+/* Chat géré dynamiquement par le JS (MutationObserver dans 10_chat_mysql.js) */
+
 .chat-fab {
-  position:fixed;bottom:84px;right:16px;z-index:400;
+  position:fixed;bottom:84px;right:16px;z-index:600;
   width:54px;height:54px;border-radius:50%;
   background:linear-gradient(135deg,var(--green-d),var(--green));
   color:#fff;border:none;font-size:24px;
@@ -1110,47 +1233,86 @@ input[type=range]::-webkit-slider-thumb{
 }
 
 .chat-window {
-  position:fixed;bottom:150px;right:16px;z-index:400;
-  width:340px;max-width:calc(100vw - 32px);
-  background:var(--white);border-radius:20px;
-  box-shadow:0 16px 60px rgba(0,0,0,.2);
+  position:fixed;bottom:150px;right:16px;z-index:600;
+  width:360px;max-width:calc(100vw - 32px);
+  background:var(--white);border-radius:22px;
+  box-shadow:0 20px 70px rgba(0,0,0,.22);
   border:1px solid var(--border);
   display:none;flex-direction:column;
-  max-height:520px;overflow:hidden;
+  max-height:540px;overflow:hidden;
   animation:chatPop .3s cubic-bezier(.34,1.56,.64,1);
 }
 .chat-window.open{display:flex;}
 @keyframes chatPop{from{opacity:0;transform:scale(.85) translateY(20px);}to{opacity:1;transform:scale(1) translateY(0);}}
 @media(min-width:641px){
-  .chat-window{bottom:84px;right:20px;width:360px;}
+  .chat-window{bottom:84px;right:20px;width:380px;}
 }
+
+/* ── RTL mode quand langue arabe ── */
+.chat-window.rtl { direction:rtl; }
+.chat-window.rtl .chat-head { flex-direction:row-reverse; }
+.chat-window.rtl .chat-head-info { text-align:right; }
+.chat-window.rtl .chat-msg.user { flex-direction:row; }
+.chat-window.rtl .chat-msg.bot  { flex-direction:row-reverse; }
+.chat-window.rtl .chat-msg.bot  .chat-bubble { border-radius:16px 4px 16px 16px; text-align:right; }
+.chat-window.rtl .chat-msg.user .chat-bubble { border-radius:4px 16px 16px 16px; text-align:right; }
+.chat-window.rtl .chat-input { direction:rtl; text-align:right; }
+.chat-window.rtl .chat-input-row { flex-direction:row-reverse; }
+.chat-window.rtl .chat-quick { flex-direction:row-reverse; justify-content:flex-start; }
+.chat-window.rtl .chat-head-close { margin-left:0; margin-right:auto; }
 
 .chat-head {
   background:linear-gradient(135deg,var(--green-d),var(--green));
-  color:#fff;padding:14px 16px;
+  color:#fff;padding:13px 16px;
   display:flex;align-items:center;gap:10px;
-  border-radius:20px 20px 0 0;flex-shrink:0;
+  border-radius:22px 22px 0 0;flex-shrink:0;
 }
 .chat-head-ava {
-  width:36px;height:36px;border-radius:50%;
-  background:rgba(255,255,255,.2);
+  width:38px;height:38px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(255,255,255,.25),rgba(255,255,255,.1));
   display:flex;align-items:center;justify-content:center;
-  font-size:18px;flex-shrink:0;
+  font-size:20px;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);
 }
-.chat-head-info{flex:1;}
-.chat-head-info h4{font-size:14px;font-weight:800;}
-.chat-head-info p{font-size:11px;opacity:.75;}
+.chat-head-info{flex:1;min-width:0;}
+.chat-head-info h4{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chat-head-info p{font-size:10.5px;opacity:.8;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
 .chat-head-close{
   background:rgba(255,255,255,.15);border:none;color:#fff;
   width:28px;height:28px;border-radius:50%;
   cursor:pointer;font-size:14px;
   display:flex;align-items:center;justify-content:center;
+  transition:.15s;flex-shrink:0;
+}
+.chat-head-close:hover{background:rgba(255,255,255,.28);}
+
+/* ── Barre langue dans le chat ── */
+.chat-lang-bar {
+  display:flex;gap:4px;padding:8px 12px 2px;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.chat-lang-btn {
+  padding:4px 12px;border-radius:20px;
+  border:1.5px solid var(--border);
+  font-size:11px;font-weight:700;cursor:pointer;
+  font-family:'Outfit',sans-serif;
+  background:var(--white);color:var(--slate);
+  transition:.15s;
+}
+.chat-lang-btn.active{
+  background:var(--green);color:#fff;
+  border-color:var(--green);
+}
+.chat-lang-btn:hover:not(.active){
+  border-color:var(--green-xl);color:var(--green);
 }
 
 .chat-messages {
   flex:1;overflow-y:auto;padding:14px;
   display:flex;flex-direction:column;gap:10px;
   -webkit-overflow-scrolling:touch;
+  background:var(--white);
 }
 .chat-messages::-webkit-scrollbar{width:4px;}
 .chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
@@ -1163,7 +1325,7 @@ input[type=range]::-webkit-slider-thumb{
 .chat-msg.user{flex-direction:row-reverse;}
 .chat-bubble {
   max-width:82%;padding:10px 13px;border-radius:16px;
-  font-size:13px;line-height:1.5;
+  font-size:13px;line-height:1.55;
   word-break:break-word;
 }
 .chat-msg.bot .chat-bubble{
@@ -1171,15 +1333,19 @@ input[type=range]::-webkit-slider-thumb{
   border-radius:4px 16px 16px 16px;
 }
 .chat-msg.user .chat-bubble{
-  background:var(--green);color:#fff;
+  background:linear-gradient(135deg,var(--green),var(--green-l));
+  color:#fff;
   border-radius:16px 4px 16px 16px;
 }
 .chat-ava{
-  width:28px;height:28px;border-radius:50%;
+  width:30px;height:30px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  font-size:13px;flex-shrink:0;
+  font-size:14px;flex-shrink:0;
 }
-.chat-msg.bot .chat-ava{background:var(--green-bg);}
+.chat-msg.bot .chat-ava{
+  background:linear-gradient(135deg,#16a34a,#22c55e);
+  color:#fff;font-size:15px;
+}
 .chat-msg.user .chat-ava{background:var(--green);color:#fff;}
 
 .chat-typing {
@@ -1198,7 +1364,7 @@ input[type=range]::-webkit-slider-thumb{
 
 .chat-quick {
   padding:8px 12px;
-  display:flex;gap:6px;flex-wrap:wrap;
+  display:flex;gap:5px;flex-wrap:wrap;
   border-top:1px solid var(--border);
   background:var(--bg);flex-shrink:0;
 }
@@ -1209,11 +1375,12 @@ input[type=range]::-webkit-slider-thumb{
   font-family:'Outfit',sans-serif;transition:.15s;
   white-space:nowrap;
 }
-.chat-q-btn:hover{background:var(--green);color:#fff;}
+.chat-q-btn:hover{background:var(--green);color:#fff;border-color:var(--green);}
 
 .chat-input-row {
-  display:flex;gap:8px;padding:12px;
+  display:flex;gap:7px;padding:10px 12px;
   border-top:1px solid var(--border);flex-shrink:0;
+  background:var(--white);
 }
 .chat-input {
   flex:1;border:1.5px solid var(--border);border-radius:12px;
@@ -1221,15 +1388,44 @@ input[type=range]::-webkit-slider-thumb{
   outline:none;resize:none;max-height:80px;
   background:var(--bg);transition:.2s;line-height:1.4;
 }
-.chat-input:focus{border-color:var(--green);background:#fff;}
+.chat-input:focus{border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(22,163,74,.1);}
 .chat-send {
   width:38px;height:38px;border-radius:12px;border:none;
-  background:var(--green);color:#fff;font-size:16px;
+  background:linear-gradient(135deg,var(--green),var(--green-l));
+  color:#fff;font-size:16px;
   cursor:pointer;display:flex;align-items:center;justify-content:center;
   transition:.2s;flex-shrink:0;align-self:flex-end;
+  box-shadow:0 2px 8px rgba(22,163,74,.35);
 }
-.chat-send:hover{background:#15803d;}
-.chat-send:disabled{opacity:.5;cursor:not-allowed;}
+.chat-send:hover{transform:scale(1.08);box-shadow:0 4px 14px rgba(22,163,74,.5);}
+.chat-send:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.chat-attach-btn {
+  width:38px;height:38px;border-radius:12px;border:1.5px solid var(--border);
+  background:var(--white);color:var(--slate);font-size:17px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;align-self:flex-end;transition:.2s;
+}
+.chat-attach-btn:hover{border-color:var(--green);color:var(--green);background:var(--green-bg);}
+html.dark .chat-attach-btn{background:#0f172a;border-color:#334155;color:#94a3b8;}
+html.dark .chat-attach-btn:hover{border-color:var(--green);color:var(--green);}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse-mic{
+  0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.6);}
+  50%{box-shadow:0 0 0 8px rgba(220,38,38,0);}
+}
+#chat-mic{transition:background .2s,box-shadow .2s;}
+#chat-tts{transition:opacity .2s;}
+
+/* ── Dark mode chat ── */
+html.dark .chat-messages{background:#1e293b;}
+html.dark .chat-window{background:#1e293b;}
+html.dark .chat-bubble{background:#0f172a;color:#f1f5f9;border-color:#334155;}
+html.dark .chat-msg.user .chat-bubble{background:linear-gradient(135deg,#15803d,#16a34a);color:#fff;}
+html.dark .chat-input{background:#0f172a;color:#f1f5f9;border-color:#334155;}
+html.dark .chat-quick{background:#0f172a;}
+html.dark .chat-lang-bar{background:#0f172a;border-color:#334155;}
+html.dark .chat-lang-btn{background:#1e293b;color:#94a3b8;border-color:#334155;}
+html.dark .chat-input-row{background:#1e293b;}
 </style>
 </head>
 <body>
@@ -1238,39 +1434,130 @@ input[type=range]::-webkit-slider-thumb{
      LOGIN SCREEN
 ████████████████████████████████████████ -->
 <div id="screen-login" class="screen active">
-  <div class="login-particles" id="particles"></div>
-  <div class="login-box">
-    <div class="login-logo">
+
+  <!-- ── PANNEAU GAUCHE : Photo agriculteur ── -->
+  <div class="login-photo-panel">
+    <div class="login-particles" id="particles"></div>
+    <div class="login-photo-overlay">
+      <div class="login-photo-badge"><span>🌿</span> Agriculture de Précision</div>
+      <div class="login-photo-headline">
+        Cultivez plus<br>intelligemment<br>avec <em>l'IA</em>
+      </div>
+      <p class="login-photo-sub">
+        Capteurs IoT, Random Forest et LSTM réunis pour optimiser chaque décision de votre exploitation agricole.
+      </p>
+      <div class="login-photo-stats">
+        <div class="lps-item">
+          <div class="lps-val">98<span>%</span></div>
+          <div class="lps-label">Précision RF</div>
+        </div>
+        <div class="lps-item">
+          <div class="lps-val">6</div>
+          <div class="lps-label">Capteurs IoT</div>
+        </div>
+        <div class="lps-item">
+          <div class="lps-val">7<span>j</span></div>
+          <div class="lps-label">Prévision LSTM</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PANNEAU DROIT : Formulaire ── -->
+  <div class="login-form-panel">
+
+    <!-- Logo -->
+    <div class="login-form-logo">
       <div class="logo-circle">🌿</div>
-      <h1>AgriSmart</h1>
-      <p>Plateforme Intelligente d'Agriculture de Précision</p>
+      <div>
+        <h1>AgriSmart</h1>
+       
+      </div>
     </div>
 
+    <!-- Titre -->
+    <div class="login-form-title" id="login-title-txt">Connexion</div>
+    <p class="login-form-subtitle" id="login-subtitle-txt">Choisissez votre profil et entrez vos identifiants</p>
+
+    <!-- Langue -->
     <div class="login-lang-row">
       <button class="login-lang-btn active" data-lang="fr" onclick="AS_setLang('fr')">🇫🇷 FR</button>
       <button class="login-lang-btn" data-lang="ar" onclick="AS_setLang('ar')">🇩🇿 AR</button>
       <button class="login-lang-btn" data-lang="en" onclick="AS_setLang('en')">🇬🇧 EN</button>
     </div>
+
+    <!-- Séparateur -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <div style="flex:1;height:1px;background:rgba(255,255,255,.12);"></div>
+      <span style="font-size:11px;color:rgba(255,255,255,.35);font-weight:600;letter-spacing:.6px;text-transform:uppercase;">Rôle</span>
+      <div style="flex:1;height:1px;background:rgba(255,255,255,.12);"></div>
+    </div>
+
+    <!-- Onglets rôle -->
     <div class="role-tabs">
-      <button class="role-tab active" onclick="setRole('admin',this)"> Admin</button>
-      <button class="role-tab" onclick="setRole('agriculteur',this)">Agriculteur</button>
-      <button class="role-tab" onclick="setRole('technicien',this)">Technicien</button>
+      <button class="role-tab active" onclick="setRole('admin',this)">👑 Admin</button>
+      <button class="role-tab" onclick="setRole('agriculteur',this)">🌾 Agriculteur</button>
+      <button class="role-tab" onclick="setRole('technicien',this)">🔧 Technicien</button>
     </div>
 
-    <div class="inp-group">
-      <label>Identifiant</label>
-      <input type="text" id="login-user" placeholder="Entrez votre identifiant" value="admin">
-    </div>
-    <div class="inp-group">
-      <label>Mot de passe</label>
-      <input type="password" id="login-pass" placeholder="••••••••" value="1234">
+    <!-- Séparateur -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <div style="flex:1;height:1px;background:rgba(255,255,255,.12);"></div>
+      <span style="font-size:11px;color:rgba(255,255,255,.35);font-weight:600;letter-spacing:.6px;text-transform:uppercase;">Identifiants</span>
+      <div style="flex:1;height:1px;background:rgba(255,255,255,.12);"></div>
     </div>
 
-    <button class="btn-login" onclick="doLogin()">
-      Se Connecter
+    <!-- Champs -->
+    <div class="inp-group">
+      <label id="lbl-login-user">Identifiant</label>
+      <div style="position:relative;">
+        <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;opacity:.5;">👤</span>
+        <input type="text" id="login-user" placeholder="Entrez votre identifiant" value="admin"
+          style="padding-left:40px;">
+      </div>
+    </div>
+    <div class="inp-group">
+      <label id="lbl-login-pass">Mot de passe</label>
+      <div style="position:relative;">
+        <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;opacity:.5;">🔑</span>
+        <input type="password" id="login-pass" placeholder="••••••••" value="1234"
+          style="padding-left:40px;">
+      </div>
+    </div>
+
+    <!-- Bouton connexion -->
+    <button class="btn-login" id="btn-login-main" onclick="doLogin()">
+      🔐 Se Connecter
     </button>
 
-    
+    <!-- Aide comptes de demo 
+    <div style="margin-top:18px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 14px;">
+      <div style="font-size:11px;font-weight:700;color:#86efac;letter-spacing:.5px;margin-bottom:8px;text-transform:uppercase;">💡 Comptes de démonstration</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+        <button onclick="document.getElementById('login-user').value='admin';document.getElementById('login-pass').value='1234';setRole('admin',document.querySelectorAll('.role-tab')[0])"
+          style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:7px 4px;cursor:pointer;font-family:Outfit,sans-serif;transition:.15s;"
+          onmouseover="this.style.background='rgba(34,197,94,.2)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">
+          <div style="font-size:14px;">👑</div>
+          <div style="font-size:10px;font-weight:700;color:#fff;margin-top:2px;">admin</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.4);">1234</div>
+        </button>
+        <button onclick="document.getElementById('login-user').value='ahmed';document.getElementById('login-pass').value='1234';setRole('agriculteur',document.querySelectorAll('.role-tab')[1])"
+          style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:7px 4px;cursor:pointer;font-family:Outfit,sans-serif;transition:.15s;"
+          onmouseover="this.style.background='rgba(34,197,94,.2)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">
+          <div style="font-size:14px;">🌾</div>
+          <div style="font-size:10px;font-weight:700;color:#fff;margin-top:2px;">ahmed</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.4);">1234</div>
+        </button>
+        <button onclick="document.getElementById('login-user').value='technicien';document.getElementById('login-pass').value='1234';setRole('technicien',document.querySelectorAll('.role-tab')[2])"
+          style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:7px 4px;cursor:pointer;font-family:Outfit,sans-serif;transition:.15s;"
+          onmouseover="this.style.background='rgba(34,197,94,.2)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">
+          <div style="font-size:14px;">🔧</div>
+          <div style="font-size:10px;font-weight:700;color:#fff;margin-top:2px;">technicien</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.4);">1234</div>
+        </button>
+      </div>
+    </div>
+-->
   </div>
 </div>
 
@@ -1694,20 +1981,6 @@ input[type=range]::-webkit-slider-thumb{
 <!-- NOTIFICATION -->
 <div class="notif" id="notif"></div>
 
-<!-- ═══════════════════════════════════════════════════════
-     SCRIPTS JS — organisés en 10 fichiers
-═══════════════════════════════════════════════════════ -->
-<script src="js/01_config.js"></script>
-<script src="js/02_auth.js"></script>
-<script src="js/03_app.js"></script>
-<script src="js/04_dashboard.js"></script>
-<script src="js/05_rf.js"></script>
-<script src="js/06_lstm.js"></script>
-<script src="js/07_iot_history.js"></script>
-<script src="js/08_admin.js"></script>
-<script src="js/09_ui.js"></script>
-<script src="js/10_chat_mysql.js"></script>
-<script src="js/11_settings.js"></script>
 
 <!-- ████ MODAL UTILISATEUR ████ -->
 <div class="modal-overlay" id="modal-user">
@@ -1787,41 +2060,80 @@ input[type=range]::-webkit-slider-thumb{
 </div>
 
 <!-- ████ CHATBOT ████ -->
-<button class="chat-fab" id="chat-fab" onclick="toggleChat()" title="Assistant AgriSmart">
+<button class="chat-fab" id="chat-fab" onclick="toggleChat()" title="AgroBot — Assistant IA AgriSmart" style="display:none;">
   <span id="chat-fab-ico">🤖</span>
   <span class="chat-badge" id="chat-badge" style="display:none">1</span>
 </button>
 
 <div class="chat-window" id="chat-window">
+  <!-- ── En-tête ── -->
   <div class="chat-head">
-    <div class="chat-head-ava">🌿</div>
+    <div class="chat-head-ava">🤖</div>
     <div class="chat-head-info">
-      <h4 id="chat-head-title">Assistant AgriSmart</h4>
-      <p id="chat-head-sub">IA · FR / AR / EN · Voix 🎤</p>
+      <h4 id="chat-head-title">AgroBot — Assistant IA</h4>
+      <p id="chat-head-sub">
+        <span style="width:7px;height:7px;border-radius:50%;background:#86efac;display:inline-block;box-shadow:0 0 5px #86efac;flex-shrink:0;"></span>
+        Claude AI · FR / AR / EN · 🎤
+      </p>
     </div>
     <button id="chat-tts" onclick="toggleTTS()" title="Désactiver la voix"
-      style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;opacity:1;transition:.2s;">🔊</button>
+      style="background:none;border:none;font-size:15px;cursor:pointer;padding:4px 2px;opacity:1;color:#fff;">🔊</button>
+    <!-- Bouton Test Voix (depuis Chatbot.tsx) -->
+    <button id="chat-test-voice" onclick="testVoice()" title="Tester la voix"
+      style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:8px;font-size:13px;cursor:pointer;padding:3px 7px;color:#fff;transition:.2s;"
+      onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">🔊 Test</button>
+    <!-- Bouton Stop Speaking (depuis Chatbot.tsx — visible seulement pendant TTS) -->
+    <button id="chat-stop-speak" onclick="stopSpeaking()" title="Arrêter la voix"
+      style="display:none;background:rgba(220,38,38,.25);border:1px solid rgba(220,38,38,.5);border-radius:8px;font-size:13px;cursor:pointer;padding:3px 7px;color:#fca5a5;transition:.2s;">⏹ Stop</button>
+    <button onclick="clearChat()" title="Effacer"
+      style="background:none;border:none;font-size:14px;cursor:pointer;padding:4px 2px;opacity:.6;color:#fff;transition:.2s;"
+      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.6'">🗑</button>
+    <button onclick="document.getElementById('chat-gemini-key').style.display=document.getElementById('chat-gemini-key').style.display==='none'?'block':'none'" 
+      title="Configurer Gemini API Key"
+      style="background:none;border:none;font-size:13px;cursor:pointer;padding:4px 2px;opacity:.5;color:#fff;transition:.2s;"
+      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.5'">🔑</button>
     <button class="chat-head-close" onclick="toggleChat()">✕</button>
   </div>
 
-  <div class="chat-messages" id="chat-messages"></div>
-
-  <div class="chat-quick" id="chat-quick">
-    <button class="chat-q-btn" onclick="envoyerQuestion('Comment utiliser le Random Forest ?')">🌲 RF</button>
-    <button class="chat-q-btn" onclick="envoyerQuestion('Comment fonctionne le LSTM ?')">📈 LSTM</button>
-    <button class="chat-q-btn" onclick="envoyerQuestion('capteur iot données live')">📡 Capteurs live</button>
-    <button class="chat-q-btn" onclick="envoyerQuestion('Mon sol est trop acide, que faire ?')">🧪 Sol</button>
-    <button class="chat-q-btn" onclick="envoyerQuestion('Comment gérer l irrigation ?')">💧 Irrigation</button>
-    <button class="chat-q-btn" onclick="envoyerQuestion('مرحبا ساعدني')">🇩🇿 عربي</button>
-    <button class="chat-q-btn" onclick="envoyerQuestion('Hello help me')">🇬🇧 EN</button>
+  <!-- ── Barre de langue ── -->
+  <div class="chat-lang-bar" id="chat-lang-bar">
+    <button class="chat-lang-btn active" id="clb-fr" onclick="setChatLang('fr')">🇫🇷 FR</button>
+    <button class="chat-lang-btn" id="clb-ar" onclick="setChatLang('ar')">🇩🇿 عربي</button>
+    <button class="chat-lang-btn" id="clb-en" onclick="setChatLang('en')">🇬🇧 EN</button>
   </div>
 
-  <div class="chat-input-row">
-    <textarea class="chat-input" id="chat-input" placeholder="Posez votre question… / اسأل / Ask…" rows="1"
+  <!-- ── Gemini API Key (optionnel — depuis Chatbot.tsx) ── -->
+  <div id="chat-gemini-key" style="display:none;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.1);background:rgba(22,163,74,.08);">
+    <div style="font-size:11px;color:var(--slate);margin-bottom:5px;">🔑 Gemini API Key (fallback si Claude hors-ligne)</div>
+    <div style="display:flex;gap:8px;">
+      <input type="password" id="gemini-key-input" placeholder="AIza..." 
+        style="flex:1;border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;font-family:monospace;background:var(--bg);outline:none;">
+      <button onclick="saveGeminiKey(document.getElementById('gemini-key-input').value)"
+        style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:Outfit,sans-serif;">💚 Save</button>
+    </div>
+    <div style="font-size:10px;color:var(--slate);margin-top:3px;">Obtenir une clé gratuite sur <strong>aistudio.google.com</strong></div>
+  </div>
+
+  <!-- ── Messages ── -->
+  <div class="chat-messages" id="chat-messages"></div>
+
+  <!-- ── Suggestions rapides ── -->
+  <div class="chat-quick" id="chat-quick"></div>
+
+  <!-- ── Saisie ── -->
+  <!-- Input caché pour sélection de fichiers/photos -->
+  <input type="file" id="chat-file-input" accept="image/*,.pdf,.txt,.csv,.json,.xlsx,.xls,.docx,.doc"
+    style="display:none;" onchange="onFileSelected(this)">
+
+  <div class="chat-input-row" id="chat-input-row-wrap">
+    <!-- Bouton pièce jointe -->
+    <button class="chat-attach-btn" onclick="ouvrirAttachement()" title="Joindre un fichier ou une photo">📎</button>
+    <textarea class="chat-input" id="chat-input"
+      placeholder="Posez votre question… / اسأل / Ask…" rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerChat();}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
-    <button id="chat-mic" onclick="startSTT()" title="Parler au microphone"
-      style="width:38px;height:38px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-end;margin-right:4px;transition:.2s;">🎤</button>
+    <button id="chat-mic" onclick="startSTT()" title="Microphone"
+      style="width:38px;height:38px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-end;transition:.2s;">🎤</button>
     <button class="chat-send" id="chat-send" onclick="envoyerChat()">➤</button>
   </div>
 </div>
@@ -2093,7 +2405,7 @@ function applyLang(){
   if(lbl) lbl.textContent=l.live;
 
   /* login */
-  var lp=document.querySelector('.login-logo p');
+  var lp=document.querySelector('.login-form-subtitle');
   if(lp) lp.textContent=l.loginSub;
   document.querySelectorAll('.inp-group').forEach(function(g){
     var lb=g.querySelector('label'),ip=g.querySelector('input');
@@ -2375,6 +2687,63 @@ if(document.readyState==='loading'){
 }
 
 })();
+</script>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     SCRIPTS JS — organisés en 10 fichiers
+═══════════════════════════════════════════════════════ -->
+<script src="js/01_config.js"></script>
+<script src="js/02_auth.js"></script>
+<script src="js/03_app.js"></script>
+<script src="js/04_dashboard.js"></script>
+<script src="js/05_rf.js"></script>
+<script src="js/06_lstm.js"></script>
+<script src="js/07_iot_history.js"></script>
+<script src="js/08_admin.js"></script>
+<script src="js/09_ui.js"></script>
+<script src="js/10_chat_mysql.js"></script>
+<script src="js/11_settings.js"></script>
+
+
+<!-- Patch chatbot visibility après login -->
+<script>
+window.addEventListener('load', function() {
+  // Patch doLogin pour afficher le chatbot après connexion
+  if (typeof doLogin === 'function') {
+    var _origDoLogin = doLogin;
+    window.doLogin = function() {
+      _origDoLogin.apply(this, arguments);
+      setTimeout(function() {
+        var fab = document.getElementById('chat-fab');
+        var win = document.getElementById('chat-window');
+        var app = document.getElementById('screen-app');
+        if (app && (app.classList.contains('active') || window.getComputedStyle(app).display !== 'none')) {
+          if (fab) fab.style.display = 'flex';
+          if (win) win.style.removeProperty('display');
+        }
+      }, 300);
+    };
+  }
+
+  // Aussi vérifier toutes les 300ms pendant 5s au cas où l'auth est asynchrone
+  var attempts = 0;
+  var loginCheck = setInterval(function() {
+    var fab = document.getElementById('chat-fab');
+    var win = document.getElementById('chat-window');
+    var app = document.getElementById('screen-app');
+    var login = document.getElementById('screen-login');
+    if (!fab || !app) { if (++attempts > 15) clearInterval(loginCheck); return; }
+    var appVisible = app.classList.contains('active') || window.getComputedStyle(app).display !== 'none';
+    var loginVisible = login && (login.classList.contains('active') || window.getComputedStyle(login).display !== 'none');
+    if (appVisible && !loginVisible) {
+      fab.style.display = 'flex';
+      if (win) win.style.removeProperty('display');
+      clearInterval(loginCheck);
+    }
+    if (++attempts > 15) clearInterval(loginCheck);
+  }, 300);
+});
 </script>
 
 </body>
