@@ -1,99 +1,119 @@
 /* ════════════════════════════════════════════════════════════════
-   AgriSmart — 08 — ADMIN — Gestion Utilisateurs
-   buildAdminPage(), renderUsersTable(), CRUD Modal, Journal système
-   Fichier : 08_admin.js
+   AgriSmart — 08_admin.js — CORRIGE
+   Tous les labels admin (stats, table, filtres, modal) via T()
 ════════════════════════════════════════════════════════════════ */
-
 "use strict";
 
-/* ═══════════════════════════════════════════════════════
-   ADMIN — USERS DATABASE (in-memory)
-═══════════════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════════════
-   GESTION UTILISATEURS — MySQL XAMPP
-   API : http://localhost/agrismart/api/users.php
-═══════════════════════════════════════════════════════ */
-// USERS_API et usersApiCall définis dans la config API (voir ci-dessus)
-let filtreActif    = 'tous';
+let filtreActif     = 'tous';
 let rechercheActive = '';
-let userASupprimer = null; // id MySQL
+let userASupprimer  = null;
 
-/* ── CONSTRUCTION PAGE ADMIN ── */
+/* ── Page Admin ── */
 async function buildAdminPage() {
-  // Stats depuis MySQL
   const s = await usersApiCall('stats');
   if (s.success) {
     document.getElementById('admin-stats').innerHTML = [
-      {ico:'👥',bg:'#ede9fe',val:s.total,        lbl:'Utilisateurs total',c:'var(--violet)'},
-      {ico:'🌾',bg:'#f0fdf4',val:s.agriculteurs,  lbl:'Agriculteurs',     c:'var(--green)'},
-      {ico:'🔧',bg:'#e0f2fe',val:s.techniciens,   lbl:'Techniciens',      c:'var(--blue)'},
-      {ico:'✅',bg:'#f0fdf4',val:s.actifs,         lbl:'Comptes actifs',   c:'var(--green)'},
-    ].map(st=>`<div class="stat-card">
-      <div class="stat-icon" style="background:${st.bg}">${st.ico}</div>
-      <div class="stat-body"><div class="stat-val" style="color:${st.c}">${st.val}</div><div class="stat-label">${st.lbl}</div></div>
-    </div>`).join('');
+      {ico:'👥', bg:'#ede9fe', val:s.total,       lK:'adminStatTotal',  c:'var(--violet)'},
+      {ico:'🌾', bg:'#f0fdf4', val:s.agriculteurs, lK:'adminStatAgri',   c:'var(--green)'},
+      {ico:'🔧', bg:'#e0f2fe', val:s.techniciens,  lK:'adminStatTech',   c:'var(--blue)'},
+      {ico:'✅', bg:'#f0fdf4', val:s.actifs,        lK:'adminStatActifs', c:'var(--green)'},
+    ].map(st => `
+      <div class="stat-card">
+        <div class="stat-icon" style="background:${st.bg}">${st.ico}</div>
+        <div class="stat-body">
+          <div class="stat-val" style="color:${st.c}">${st.val}</div>
+          <div class="stat-label">${T(st.lK)}</div>
+        </div>
+      </div>`).join('');
   }
+
+  /* Filtres traduits */
+  const filtresEl = document.getElementById('admin-filtres');
+  if (filtresEl) filtresEl.innerHTML = `
+    <button class="filtre-btn ${filtreActif==='tous'?'active':''}" onclick="filtrerUsers('tous',this)">${T('adminFiltreAll')}</button>
+    <button class="filtre-btn ${filtreActif==='Admin'?'active':''}" onclick="filtrerUsers('Admin',this)">👑 ${T('adminFiltreAdmins')}</button>
+    <button class="filtre-btn ${filtreActif==='Technicien'?'active':''}" onclick="filtrerUsers('Technicien',this)">🔧 ${T('adminFiltreTech')}</button>
+    <button class="filtre-btn ${filtreActif==='Agriculteur'?'active':''}" onclick="filtrerUsers('Agriculteur',this)">🌾 ${T('adminFiltreAgri')}</button>`;
+
+  /* Bouton ajouter traduit */
+  const addBtn = document.getElementById('admin-add-btn');
+  if (addBtn) addBtn.textContent = '➕ ' + T('adminBtnAjouter');
+
+  /* Placeholder recherche */
+  const searchEl = document.getElementById('admin-search');
+  if (searchEl) searchEl.placeholder = T('adminSearchPlaceholder');
+
   await renderUsersTable();
   await chargerJournal();
-  buildSysLog('info','Page administration chargée (MySQL)');
+  buildSysLog('info', T('pageDashboard'));
 }
 
-/* ── TABLE UTILISATEURS ── */
+/* ── Table utilisateurs ── */
 async function renderUsersTable() {
   const t = document.getElementById('users-table-v2');
-  t.innerHTML = '<thead><tr><th colspan="8" style="text-align:center;padding:16px;color:#94a3b8;">⏳ Chargement depuis MySQL...</th></tr></thead>';
+  t.innerHTML = `<thead><tr><th colspan="8" style="text-align:center;padding:16px;color:#94a3b8;">⏳ ${T('histLoading')}</th></tr></thead>`;
 
-  // Construire l'URL avec filtres
   let extraParams = `&role=${filtreActif === 'tous' ? '' : filtreActif}`;
   if (rechercheActive) extraParams += `&q=${encodeURIComponent(rechercheActive)}`;
 
-  // Appel direct avec fetch pour passer les paramètres GET correctement
-  let fetchUrl = `${USERS_API}?action=list${extraParams}`;
   let d;
   try {
-    const r = await fetch(fetchUrl);
+    const r = await fetch(`${USERS_API}?action=list${extraParams}`);
     d = await r.json();
   } catch(e) {
     d = { success: false, message: 'Erreur réseau: ' + e.message };
   }
+
   if (!d.success) {
     t.innerHTML = `<thead><tr><th colspan="8" style="text-align:center;padding:16px;color:#dc2626;">❌ ${d.message||'Erreur MySQL'}</th></tr></thead>`;
     return;
   }
 
-  document.getElementById('user-count-badge').textContent = d.total;
+  const cnt = document.getElementById('user-count-badge');
+  if (cnt) cnt.textContent = d.total;
 
   const roleColors   = {Admin:'bg-violet', Agriculteur:'bg-green', Technicien:'bg-blue'};
   const statusColors = {Actif:'bg-green',  Inactif:'bg-amber',     Suspendu:'bg-red'};
 
+  /* En-têtes traduits */
   const thead = `<thead><tr>
-    <th>#</th><th>Nom complet</th><th>Login</th><th>Rôle</th>
-    <th>Zone</th><th>Téléphone</th><th>Statut</th><th>Actions</th>
+    <th>${T('adminTblNum')}</th>
+    <th>${T('adminTblNom')}</th>
+    <th>${T('adminTblLogin')}</th>
+    <th>${T('adminTblRole')}</th>
+    <th>${T('adminTblZone')}</th>
+    <th>${T('adminTblTel')}</th>
+    <th>${T('adminTblStatut')}</th>
+    <th>${T('adminTblActions')}</th>
   </tr></thead>`;
 
-  const list = d.utilisateurs || [];
-  const tbody = list.length ? `<tbody>${list.map(u=>`<tr>
-    <td style="color:var(--slate);font-family:'JetBrains Mono',monospace;font-size:11px;">${u.id}</td>
-    <td><strong>${u.prenom} ${u.nom}</strong><br><span style="font-size:11px;color:var(--slate);">Créé le ${u.date_creation}</span></td>
-    <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${u.login}</td>
-    <td><span class="badge ${roleColors[u.role]||'bg-green'}">${u.role}</span></td>
-    <td style="font-size:12px;">${u.zone||'—'}</td>
-    <td style="font-size:12px;font-family:'JetBrains Mono',monospace;">${u.telephone||'—'}</td>
-    <td><span class="badge ${statusColors[u.statut]||'bg-green'}">${u.statut}</span></td>
-    <td style="white-space:nowrap;">
-      <button class="act-btn act-view" onclick="voirUser(${u.id})" title="Voir">👁</button>
-      <button class="act-btn act-edit" onclick="ouvrirModal('modifier',${u.id})" title="Modifier" style="margin:0 4px;">✏️</button>
-      ${u.login!=='admin'?`<button class="act-btn act-del" onclick="demanderSuppression(${u.id},'${u.prenom} ${u.nom}','${u.login}')" title="Supprimer">🗑</button>`:''}
-    </td>
-  </tr>`).join('')}</tbody>` :
-  `<tbody><tr><td colspan="8" style="text-align:center;padding:24px;color:var(--slate);">Aucun utilisateur trouvé</td></tr></tbody>`;
+  const list  = d.utilisateurs || [];
+  const tbody = list.length ? `<tbody>${list.map(u => `
+    <tr>
+      <td style="color:var(--slate);font-family:'JetBrains Mono',monospace;font-size:11px;">${u.id}</td>
+      <td>
+        <strong>${u.prenom} ${u.nom}</strong><br>
+        <span style="font-size:11px;color:var(--slate);">${T('adminTblCreeLe')} ${u.date_creation}</span>
+      </td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${u.login}</td>
+      <td><span class="badge ${roleColors[u.role]||'bg-green'}">${u.role}</span></td>
+      <td style="font-size:12px;">${u.zone||'—'}</td>
+      <td style="font-size:12px;font-family:'JetBrains Mono',monospace;">${u.telephone||'—'}</td>
+      <td><span class="badge ${statusColors[u.statut]||'bg-green'}">${u.statut}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="act-btn act-view" onclick="voirUser(${u.id})" title="👁">👁</button>
+        <button class="act-btn act-edit" onclick="ouvrirModal('modifier',${u.id})" title="✏️" style="margin:0 4px;">✏️</button>
+        ${u.login!=='admin'?`<button class="act-btn act-del" onclick="demanderSuppression(${u.id},'${u.prenom} ${u.nom}','${u.login}')" title="🗑">🗑</button>`:''}
+      </td>
+    </tr>`).join('')}</tbody>` :
+    `<tbody><tr><td colspan="8" style="text-align:center;padding:24px;color:var(--slate);">—</td></tr></tbody>`;
 
   t.innerHTML = thead + tbody;
 }
 
 function filtrerUsers(role, btn) {
   filtreActif = role;
-  document.querySelectorAll('.filtre-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.filtre-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderUsersTable();
 }
@@ -103,37 +123,47 @@ function rechercherUsers(val) {
   renderUsersTable();
 }
 
-/* ── MODAL — OUVRIR ── */
+/* ── Modal ── */
 async function ouvrirModal(mode, id) {
   const m = document.getElementById('modal-user');
   document.getElementById('m-uid').value = '';
-  ['m-prenom','m-nom','m-login','m-pass','m-zone','m-tel'].forEach(el=>document.getElementById(el).value='');
-  document.getElementById('m-role').value   = 'Agriculteur';
-  document.getElementById('m-status').value = 'Actif';
+  ['m-prenom','m-nom','m-login','m-pass','m-zone','m-tel'].forEach(el => {
+    const e = document.getElementById(el);
+    if (e) e.value = '';
+  });
+  const mRole   = document.getElementById('m-role');
+  const mStatus = document.getElementById('m-status');
+  if (mRole)   mRole.value   = 'Agriculteur';
+  if (mStatus) mStatus.value = 'Actif';
+
+  /* Titre et bouton traduits */
+  const modalIcon    = document.getElementById('modal-icon');
+  const modalTitle   = document.getElementById('modal-title');
+  const modalSaveBtn = document.getElementById('modal-save-btn');
 
   if (mode === 'modifier' && id) {
-    // Charger les données depuis MySQL
-    const d = await usersApiCall(`list&q=`, 'GET', null);
-    // Trouver l'utilisateur par id dans la liste
-    const u = (d.utilisateurs||[]).find(x=>x.id===id);
+    const d = await usersApiCall('list&q=', 'GET', null);
+    const u = (d.utilisateurs||[]).find(x => x.id === id);
     if (!u) { showNotif('❌ Utilisateur introuvable'); return; }
 
-    document.getElementById('modal-title').textContent = 'Modifier Utilisateur';
-    document.getElementById('modal-icon').textContent  = '✏️';
-    document.getElementById('modal-save-btn').textContent = '💾 Sauvegarder';
+    if (modalTitle)   modalTitle.textContent   = T('modalEditTitle');
+    if (modalIcon)    modalIcon.textContent     = '✏️';
+    if (modalSaveBtn) modalSaveBtn.textContent  = T('modalBtnSave');
+
     document.getElementById('m-uid').value    = u.id;
     document.getElementById('m-prenom').value = u.prenom;
     document.getElementById('m-nom').value    = u.nom;
     document.getElementById('m-login').value  = u.login;
-    document.getElementById('m-pass').value   = ''; // ne pas afficher le hash
-    document.getElementById('m-role').value   = u.role;
-    document.getElementById('m-zone').value   = u.zone||'';
-    document.getElementById('m-tel').value    = u.telephone||'';
-    document.getElementById('m-status').value = u.statut;
+    if (mRole)   mRole.value   = u.role;
+    const mZone = document.getElementById('m-zone');
+    const mTel  = document.getElementById('m-tel');
+    if (mZone)   mZone.value = u.zone||'';
+    if (mTel)    mTel.value  = u.telephone||'';
+    if (mStatus) mStatus.value = u.statut;
   } else {
-    document.getElementById('modal-title').textContent    = 'Ajouter un Utilisateur';
-    document.getElementById('modal-icon').textContent     = '➕';
-    document.getElementById('modal-save-btn').textContent = '✅ Créer le compte';
+    if (modalTitle)   modalTitle.textContent   = T('modalAddTitle');
+    if (modalIcon)    modalIcon.textContent     = '➕';
+    if (modalSaveBtn) modalSaveBtn.textContent  = T('modalBtnCreate');
   }
   m.classList.add('open');
 }
@@ -142,7 +172,6 @@ function fermerModal() {
   document.getElementById('modal-user').classList.remove('open');
 }
 
-/* ── SAUVEGARDER (créer ou modifier) ── */
 async function sauvegarderUser() {
   const btn    = document.getElementById('modal-save-btn');
   const uid    = parseInt(document.getElementById('m-uid').value) || 0;
@@ -151,32 +180,28 @@ async function sauvegarderUser() {
   const login  = document.getElementById('m-login').value.trim();
   const pass   = document.getElementById('m-pass').value;
   const role   = document.getElementById('m-role').value;
-  const zone   = document.getElementById('m-zone').value.trim();
-  const tel    = document.getElementById('m-tel').value.trim();
-  const statut = document.getElementById('m-status').value;
+  const zone   = document.getElementById('m-zone')?.value.trim()||'';
+  const tel    = document.getElementById('m-tel')?.value.trim()||'';
+  const statut = document.getElementById('m-status')?.value||'Actif';
 
-  if (!prenom || !login) { showNotif('⚠️ Prénom et login obligatoires'); return; }
-  if (!uid && !pass)     { showNotif('⚠️ Mot de passe obligatoire pour un nouveau compte'); return; }
+  if (!prenom || !login) { showNotif('⚠️ ' + T('mPrenom') + ' / ' + T('mLogin')); return; }
+  if (!uid && !pass)     { showNotif('⚠️ ' + T('mPass')); return; }
 
-  btn.disabled   = true;
-  btn.textContent = '⏳ Enregistrement...';
+  btn.disabled = true;
+  btn.textContent = '⏳';
 
   const payload = { prenom, nom, login, role, zone, telephone:tel, statut };
   if (pass) payload.mot_de_passe = pass;
 
-  let d;
-  if (uid) {
-    d = await usersApiCall('update', 'POST', payload, uid);
-  } else {
-    d = await usersApiCall('create', 'POST', payload);
-  }
+  const d = uid
+    ? await usersApiCall('update', 'POST', payload, uid)
+    : await usersApiCall('create', 'POST', payload);
 
   btn.disabled = false;
-  btn.textContent = uid ? '💾 Sauvegarder' : '✅ Créer le compte';
+  btn.textContent = uid ? T('modalBtnSave') : T('modalBtnCreate');
 
   if (d.success) {
-    showNotif(d.message || '✅ Enregistré !');
-    buildSysLog('ok', d.message || 'Utilisateur enregistré');
+    showNotif(d.message || '✅');
     fermerModal();
     buildAdminPage();
   } else {
@@ -186,13 +211,14 @@ async function sauvegarderUser() {
 
 async function voirUser(id) {
   await ouvrirModal('modifier', id);
-  document.getElementById('modal-save-btn').textContent = '✏️ Modifier';
 }
 
 function demanderSuppression(id, nomComplet, login) {
   userASupprimer = id;
-  document.getElementById('confirm-msg').textContent =
-    `Voulez-vous vraiment supprimer le compte de ${nomComplet} (${login}) ? Cette action est irréversible.`;
+  const msg = document.getElementById('confirm-msg');
+  if (msg) msg.textContent = `${T('confirmDeleteSub')} (${nomComplet} — ${login})`;
+  const ch3 = document.querySelector('.confirm-box h3');
+  if (ch3) ch3.textContent = T('confirmDeleteTitle');
   document.getElementById('modal-confirm').classList.add('open');
 }
 
@@ -203,25 +229,18 @@ function fermerConfirm() {
 
 async function confirmerSuppression() {
   if (!userASupprimer) return;
-  const btn = document.querySelector('#modal-confirm .btn:last-child');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Suppression...'; }
-
   const d = await usersApiCall('delete', 'POST', {}, userASupprimer);
-
-  if (btn) { btn.disabled = false; btn.textContent = '🗑 Supprimer'; }
-
   if (d.success) {
-    buildSysLog('warn', d.message || 'Utilisateur supprimé');
-    showNotif('🗑 ' + (d.message || 'Compte supprimé'));
+    showNotif('🗑 ' + (d.message||''));
     fermerConfirm();
     buildAdminPage();
   } else {
-    showNotif('❌ ' + (d.message || 'Erreur MySQL'));
+    showNotif('❌ ' + (d.message||'Erreur MySQL'));
     fermerConfirm();
   }
 }
 
-/* ── JOURNAL SYSTÈME depuis MySQL ── */
+/* ── Journal système ── */
 let sysLogLines = [];
 
 async function chargerJournal() {
@@ -247,9 +266,9 @@ function buildSysLog(type, msg) {
 }
 
 async function viderLog() {
-  const d = await usersApiCall('journal_clear','POST');
+  const d = await usersApiCall('journal_clear', 'POST');
   sysLogLines = [];
   const el = document.getElementById('sys-log');
-  if (el) el.innerHTML = '<div style="color:#475569">Journal vidé.</div>';
-  if(d.success) showNotif('🗑 Journal vidé');
+  if (el) el.innerHTML = `<div style="color:#475569">${T('journalBtnVider')}.</div>`;
+  if (d.success) showNotif('🗑 ' + T('journalBtnVider'));
 }
