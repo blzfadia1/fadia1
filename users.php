@@ -2,6 +2,7 @@
 // ============================================================
 //  users.php — AgriSmart SÉCURISÉ
 //  ✅ Sessions PHP  ✅ Rate limiting  ✅ Rôles vérifiés
+//  ✅ NOUVEAU : forgot_password + reset_password + verify_token
 // ============================================================
 ob_start();
 @error_reporting(0);
@@ -10,12 +11,11 @@ ob_start();
 ob_end_clean();
 ob_start();
 
-// Démarrer session avant tout header
 if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
         'lifetime' => 3600,
         'path'     => '/',
-        'secure'   => false,   // true en HTTPS/production
+        'secure'   => false,
         'httponly' => true,
         'samesite' => 'Strict',
     ]);
@@ -67,28 +67,17 @@ function getBody(): array {
     return is_array($dec) ? $dec : [];
 }
 
-// ── Rate Limiting anti brute-force ──────────────────────────
+// ── Rate Limiting ─────────────────────────────────────────────
 function checkLoginRateLimit(): void {
     $ip  = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $key = 'login_attempts_' . md5($ip);
-
-    if (!isset($_SESSION[$key])) {
-        $_SESSION[$key] = ['count' => 0, 'start' => time()];
-    }
-
+    if (!isset($_SESSION[$key])) $_SESSION[$key] = ['count' => 0, 'start' => time()];
     $d = &$_SESSION[$key];
-
-    // Réinitialiser la fenêtre après 5 minutes
-    if ((time() - $d['start']) > 300) {
-        $d = ['count' => 0, 'start' => time()];
-    }
-
+    if ((time() - $d['start']) > 300) $d = ['count' => 0, 'start' => time()];
     $d['count']++;
-
-    // Bloquer après 5 tentatives
     if ($d['count'] > 5) {
         $wait = 300 - (time() - $d['start']);
-        jsErr("Trop de tentatives de connexion. Réessayez dans {$wait} secondes.", 429);
+        jsErr("Trop de tentatives. Réessayez dans {$wait} secondes.", 429);
     }
 }
 
@@ -98,35 +87,19 @@ function resetLoginRateLimit(): void {
     unset($_SESSION[$key]);
 }
 
-// ── Vérification d'authentification ─────────────────────────
-/**
- * Retourne les infos de l'utilisateur connecté ou envoie une erreur 401.
- * @param array $roles  Tableau vide = tout rôle accepté
- */
+// ── Auth ──────────────────────────────────────────────────────
 function requireAuth(array $roles = []): array {
-    if (empty($_SESSION['user_id'])) {
-        jsErr('Non authentifié. Veuillez vous connecter.', 401);
-    }
-    // Expiration de session
+    if (empty($_SESSION['user_id'])) jsErr('Non authentifié.', 401);
     if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > 3600) {
-        session_unset();
-        session_destroy();
-        jsErr('Session expirée. Veuillez vous reconnecter.', 401);
+        session_unset(); session_destroy();
+        jsErr('Session expirée. Reconnectez-vous.', 401);
     }
     $_SESSION['last_activity'] = time();
-
-    if (!empty($roles) && !in_array($_SESSION['user_role'], $roles)) {
-        jsErr('Accès refusé : droits insuffisants.', 403);
-    }
-
-    return [
-        'id'    => $_SESSION['user_id'],
-        'login' => $_SESSION['user_login'],
-        'role'  => $_SESSION['user_role'],
-    ];
+    if (!empty($roles) && !in_array($_SESSION['user_role'], $roles)) jsErr('Accès refusé.', 403);
+    return ['id' => $_SESSION['user_id'], 'login' => $_SESSION['user_login'], 'role' => $_SESSION['user_role']];
 }
 
-// ── Tables ───────────────────────────────────────────────────
+// ── Tables ────────────────────────────────────────────────────
 function ensureTables(PDO $db): void {
     $db->exec("CREATE TABLE IF NOT EXISTS utilisateurs (
         id            INT AUTO_INCREMENT PRIMARY KEY,
@@ -140,6 +113,19 @@ function ensureTables(PDO $db): void {
         statut        ENUM('Actif','Inactif','Suspendu') NOT NULL DEFAULT 'Actif',
         date_creation DATE         NOT NULL DEFAULT (CURDATE()),
         updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB");
+
+    // ── NOUVELLE TABLE : tokens de réinitialisation ───────────
+    $db->exec("CREATE TABLE IF NOT EXISTS reset_tokens (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        user_id    INT NOT NULL,
+        token      VARCHAR(64) NOT NULL UNIQUE,
+        expires_at DATETIME NOT NULL,
+        used       TINYINT(1) NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_token   (token),
+        INDEX idx_user    (user_id),
+        INDEX idx_expires (expires_at)
     ) ENGINE=InnoDB");
 
     $db->exec("CREATE TABLE IF NOT EXISTS journal_systeme (
@@ -177,7 +163,7 @@ function addLog(PDO $db, string $type, string $msg, ?int $userId = null): void {
     } catch (Exception $e) {}
 }
 
-// ── MAIN ─────────────────────────────────────────────────────
+// ── MAIN ──────────────────────────────────────────────────────
 try {
     $db     = getConn();
     ensureTables($db);
@@ -187,72 +173,44 @@ try {
     $method = $_SERVER['REQUEST_METHOD'];
 
     // ══════════════════════════════════════════
-    //  LOGIN — PUBLIC (avec rate limiting)
+    //  LOGIN
     // ══════════════════════════════════════════
     if ($action === 'login' && $method === 'POST') {
         checkLoginRateLimit();
-
         $b     = getBody();
         $login = strtolower(trim((string)($b['login'] ?? '')));
         $pass  = (string)($b['mot_de_passe'] ?? '');
-
-        if ($login === '' || $pass === '') {
-            jsErr('Login et mot de passe requis.');
-        }
-        // Longueur max pour éviter les attaques par long input
-        if (strlen($login) > 100 || strlen($pass) > 128) {
-            jsErr('Identifiant ou mot de passe incorrect.');
-        }
+        if ($login === '' || $pass === '') jsErr('Login et mot de passe requis.');
+        if (strlen($login) > 100 || strlen($pass) > 128) jsErr('Identifiant ou mot de passe incorrect.');
 
         $s = $db->prepare("SELECT id,prenom,nom,login,mot_de_passe,role,statut FROM utilisateurs WHERE LOWER(login)=?");
         $s->execute([$login]);
         $u = $s->fetch();
-
-        // Toujours vérifier le hash même si l'utilisateur n'existe pas (prévient timing attack)
-        $dummy_hash = '$2y$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012345';
-        $hash_to_check = $u ? $u['mot_de_passe'] : $dummy_hash;
-        $password_ok   = password_verify($pass, $hash_to_check);
-
-        if (!$u || !$password_ok) {
-            addLog($db, 'warn', "Echec connexion: login='$login'");
-            jsErr('Identifiant ou mot de passe incorrect.');
-        }
+        $dummy = '$2y$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012345';
+        $ok = password_verify($pass, $u ? $u['mot_de_passe'] : $dummy);
+        if (!$u || !$ok) { addLog($db, 'warn', "Echec login: '$login'"); jsErr('Identifiant ou mot de passe incorrect.'); }
         if ($u['statut'] === 'Inactif')  jsErr("Compte désactivé. Contactez l'administrateur.");
         if ($u['statut'] === 'Suspendu') jsErr("Compte suspendu. Contactez l'administrateur.");
 
-        // ✅ Connexion réussie — créer la session
         resetLoginRateLimit();
-
-        // Régénérer l'ID de session pour prévenir le session fixation
         session_regenerate_id(true);
-
         $_SESSION['user_id']       = (int)$u['id'];
         $_SESSION['user_login']    = $u['login'];
-        $_SESSION['user_role']     = strtolower($u['role']); // 'admin', 'agriculteur', 'technicien'
-        $_SESSION['user_role_label'] = $u['role'];           // 'Admin', 'Agriculteur', 'Technicien'
+        $_SESSION['user_role']     = strtolower($u['role']);
+        $_SESSION['user_role_label'] = $u['role'];
         $_SESSION['last_activity'] = time();
 
         $mapRole  = ['Admin' => 'admin', 'Agriculteur' => 'agriculteur', 'Technicien' => 'technicien'];
         $roleJS   = $mapRole[$u['role']] ?? 'agriculteur';
-        $mapBadge = [
-            'admin'       => ['badge-admin', 'ADMIN'],
-            'agriculteur' => ['badge-agri',  'AGRICULTEUR'],
-            'technicien'  => ['badge-tech',  'TECHNICIEN'],
-        ];
+        $mapBadge = ['admin' => ['badge-admin','ADMIN'], 'agriculteur' => ['badge-agri','AGRICULTEUR'], 'technicien' => ['badge-tech','TECHNICIEN']];
         [$bc, $bl] = $mapBadge[$roleJS];
-
         addLog($db, 'ok', "Connexion: {$u['prenom']} {$u['nom']} ({$u['role']})", (int)$u['id']);
-
         jsOk(['user' => [
-            'id'         => (int)$u['id'],
-            'login'      => $u['login'],
-            'nom'        => trim($u['prenom'] . ' ' . $u['nom']),
-            'prenom'     => $u['prenom'],
-            'role'       => $roleJS,
-            'role_label' => $u['role'],
-            'avatar'     => mb_strtoupper(mb_substr($u['prenom'], 0, 1)),
-            'badgeClass' => $bc,
-            'badgeLabel' => $bl,
+            'id' => (int)$u['id'], 'login' => $u['login'],
+            'nom' => trim($u['prenom'].' '.$u['nom']), 'prenom' => $u['prenom'],
+            'role' => $roleJS, 'role_label' => $u['role'],
+            'avatar' => mb_strtoupper(mb_substr($u['prenom'], 0, 1)),
+            'badgeClass' => $bc, 'badgeLabel' => $bl,
         ]]);
     }
 
@@ -260,13 +218,144 @@ try {
     //  LOGOUT
     // ══════════════════════════════════════════
     elseif ($action === 'logout' && $method === 'POST') {
-        session_unset();
-        session_destroy();
-        jsOk(['message' => 'Déconnecté avec succès.']);
+        session_unset(); session_destroy();
+        jsOk(['message' => 'Déconnecté.']);
     }
 
     // ══════════════════════════════════════════
-    //  STATS — Admin seulement
+    //  FORGOT PASSWORD — Step 1
+    //  Vérifie login → génère token → retourne
+    //  token directement (pas d'email en XAMPP)
+    // ══════════════════════════════════════════
+    elseif ($action === 'forgot_password' && $method === 'POST') {
+        // Rate limit : max 3 demandes par 10 min par IP
+        $ip     = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $rl_key = 'reset_' . md5($ip);
+        if (!isset($_SESSION[$rl_key])) $_SESSION[$rl_key] = ['count' => 0, 'start' => time()];
+        $rl = &$_SESSION[$rl_key];
+        if ((time() - $rl['start']) > 600) $rl = ['count' => 0, 'start' => time()];
+        $rl['count']++;
+        if ($rl['count'] > 3) jsErr("Trop de tentatives. Réessayez dans quelques minutes.", 429);
+
+        $b     = getBody();
+        $login = strtolower(trim((string)($b['login'] ?? '')));
+
+        if ($login === '') jsErr('Identifiant requis.');
+        if (strlen($login) > 100) jsErr('Identifiant invalide.');
+
+        // Chercher l'utilisateur
+        $s = $db->prepare("SELECT id, prenom, nom, login, statut FROM utilisateurs WHERE LOWER(login)=?");
+        $s->execute([$login]);
+        $u = $s->fetch();
+
+        // Réponse identique que l'utilisateur existe ou non (sécurité)
+        if (!$u || $u['statut'] !== 'Actif') {
+            // On ne révèle pas si le login existe
+            jsOk([
+                'found'   => false,
+                'message' => "Si ce compte existe, les instructions de réinitialisation ont été générées."
+            ]);
+        }
+
+        // Supprimer les anciens tokens non utilisés de cet utilisateur
+        $db->prepare("DELETE FROM reset_tokens WHERE user_id=? AND used=0")->execute([$u['id']]);
+
+        // Générer un token sécurisé (64 chars hex)
+        $token   = bin2hex(random_bytes(32));
+        $expires = date('Y-m-d H:i:s', time() + 1800); // 30 minutes
+
+        $db->prepare("INSERT INTO reset_tokens (user_id, token, expires_at) VALUES (?,?,?)")
+           ->execute([$u['id'], $token, $expires]);
+
+        addLog($db, 'info', "Demande reset MDP: {$u['login']}", $u['id']);
+
+        // Retourner le token directement (XAMPP = pas d'email)
+        jsOk([
+            'found'   => true,
+            'token'   => $token,
+            'prenom'  => $u['prenom'],
+            'expires' => '30 minutes',
+            'message' => "Token généré pour {$u['prenom']}. Utilisez-le pour réinitialiser votre mot de passe.",
+        ]);
+    }
+
+    // ══════════════════════════════════════════
+    //  VERIFY TOKEN — Vérifier si token valide
+    // ══════════════════════════════════════════
+    elseif ($action === 'verify_token') {
+        $token = trim((string)($_GET['token'] ?? ''));
+        if (strlen($token) !== 64 || !ctype_xdigit($token)) jsErr('Token invalide.', 400);
+
+        $s = $db->prepare("
+            SELECT rt.token, rt.expires_at, rt.used, u.prenom, u.nom, u.login
+            FROM reset_tokens rt
+            JOIN utilisateurs u ON u.id = rt.user_id
+            WHERE rt.token = ?
+        ");
+        $s->execute([$token]);
+        $row = $s->fetch();
+
+        if (!$row)                               jsErr('Token invalide ou introuvable.', 404);
+        if ($row['used'])                        jsErr('Ce token a déjà été utilisé.', 400);
+        if (strtotime($row['expires_at']) < time()) jsErr('Token expiré. Faites une nouvelle demande.', 400);
+
+        jsOk([
+            'valid'  => true,
+            'prenom' => $row['prenom'],
+            'login'  => $row['login'],
+        ]);
+    }
+
+    // ══════════════════════════════════════════
+    //  RESET PASSWORD — Step 2 (nouveau MDP)
+    // ══════════════════════════════════════════
+    elseif ($action === 'reset_password' && $method === 'POST') {
+        $b         = getBody();
+        $token     = trim((string)($b['token']         ?? ''));
+        $newPass   = (string)($b['mot_de_passe']       ?? '');
+        $confirmPass = (string)($b['confirmation']     ?? '');
+
+        // Validations basiques
+        if (strlen($token) !== 64 || !ctype_xdigit($token)) jsErr('Token invalide.');
+        if ($newPass === '')              jsErr('Le nouveau mot de passe est requis.');
+        if (strlen($newPass) < 6)        jsErr('Mot de passe trop court (minimum 6 caractères).');
+        if (strlen($newPass) > 128)      jsErr('Mot de passe trop long.');
+        if ($newPass !== $confirmPass)   jsErr('Les mots de passe ne correspondent pas.');
+
+        // Vérifier le token
+        $s = $db->prepare("
+            SELECT rt.id AS rt_id, rt.expires_at, rt.used, u.id AS user_id, u.prenom, u.login
+            FROM reset_tokens rt
+            JOIN utilisateurs u ON u.id = rt.user_id
+            WHERE rt.token = ?
+        ");
+        $s->execute([$token]);
+        $row = $s->fetch();
+
+        if (!$row)                                   jsErr('Token invalide.', 400);
+        if ($row['used'])                            jsErr('Ce token a déjà été utilisé.', 400);
+        if (strtotime($row['expires_at']) < time())  jsErr('Token expiré. Refaites une demande.', 400);
+
+        // Mettre à jour le mot de passe
+        $hash = password_hash($newPass, PASSWORD_BCRYPT);
+        $db->prepare("UPDATE utilisateurs SET mot_de_passe=? WHERE id=?")
+           ->execute([$hash, $row['user_id']]);
+
+        // Marquer le token comme utilisé
+        $db->prepare("UPDATE reset_tokens SET used=1 WHERE id=?")
+           ->execute([$row['rt_id']]);
+
+        // Supprimer tous les autres tokens de cet utilisateur
+        $db->prepare("DELETE FROM reset_tokens WHERE user_id=?")
+           ->execute([$row['user_id']]);
+
+        addLog($db, 'ok', "MDP réinitialisé: {$row['login']}", $row['user_id']);
+
+        jsOk(['message' => "Mot de passe modifié avec succès pour {$row['prenom']}. Vous pouvez vous connecter."]);
+    }
+
+    // ══════════════════════════════════════════
+    //  STATS
     // ══════════════════════════════════════════
     elseif ($action === 'stats') {
         requireAuth(['admin']);
@@ -282,14 +371,13 @@ try {
     }
 
     // ══════════════════════════════════════════
-    //  LIST — Admin seulement
+    //  LIST
     // ══════════════════════════════════════════
     elseif ($action === 'list') {
         requireAuth(['admin']);
-
-        $role  = isset($_GET['role']) ? trim((string)$_GET['role']) : '';
-        $q     = isset($_GET['q'])    ? trim((string)$_GET['q'])    : '';
-        $sql   = "SELECT id,prenom,nom,login,role,zone,telephone,statut,date_creation FROM utilisateurs";
+        $role = isset($_GET['role']) ? trim((string)$_GET['role']) : '';
+        $q    = isset($_GET['q'])    ? trim((string)$_GET['q'])    : '';
+        $sql  = "SELECT id,prenom,nom,login,role,zone,telephone,statut,date_creation FROM utilisateurs";
         $w = []; $p = [];
         if ($role !== '' && $role !== 'tous') { $w[] = 'role=?'; $p[] = $role; }
         if ($q !== '') {
@@ -308,43 +396,36 @@ try {
     }
 
     // ══════════════════════════════════════════
-    //  CREATE — Admin seulement
+    //  CREATE
     // ══════════════════════════════════════════
     elseif ($action === 'create' && $method === 'POST') {
         $auth   = requireAuth(['admin']);
         $b      = getBody();
-        $prenom = trim((string)($b['prenom']    ?? ''));
-        $nom    = trim((string)($b['nom']        ?? ''));
-        $login  = trim((string)($b['login']      ?? ''));
-        $pass   = (string)($b['mot_de_passe']    ?? '');
-        $role   = in_array($b['role'] ?? '', ['Admin', 'Agriculteur', 'Technicien']) ? $b['role'] : 'Agriculteur';
-        $zone   = trim((string)($b['zone']       ?? ''));
-        $tel    = trim((string)($b['telephone']  ?? ''));
-        $statut = in_array($b['statut'] ?? '', ['Actif', 'Inactif', 'Suspendu']) ? $b['statut'] : 'Actif';
-
-        // Validation
+        $prenom = trim((string)($b['prenom']        ?? ''));
+        $nom    = trim((string)($b['nom']            ?? ''));
+        $login  = trim((string)($b['login']          ?? ''));
+        $pass   = (string)($b['mot_de_passe']        ?? '');
+        $role   = in_array($b['role'] ?? '', ['Admin','Agriculteur','Technicien']) ? $b['role'] : 'Agriculteur';
+        $zone   = trim((string)($b['zone']           ?? ''));
+        $tel    = trim((string)($b['telephone']      ?? ''));
+        $statut = in_array($b['statut'] ?? '', ['Actif','Inactif','Suspendu']) ? $b['statut'] : 'Actif';
         if ($prenom === '')        jsErr('Prénom obligatoire.');
         if ($login  === '')        jsErr('Identifiant obligatoire.');
         if ($pass   === '')        jsErr('Mot de passe obligatoire.');
-        if (strlen($pass) < 6)    jsErr('Mot de passe trop court (minimum 6 caractères).');
-        if (strlen($prenom) > 100) jsErr('Prénom trop long.');
-        if (strlen($login)  > 100) jsErr('Identifiant trop long.');
-        if (!preg_match('/^[a-zA-Z0-9_\-\.]+$/', $login)) jsErr("L'identifiant ne peut contenir que des lettres, chiffres, tirets et points.");
-
+        if (strlen($pass) < 6)    jsErr('Mot de passe trop court (min 6 caractères).');
+        if (!preg_match('/^[a-zA-Z0-9_\-\.]+$/', $login)) jsErr("Identifiant invalide (lettres, chiffres, tirets, points).");
         $c = $db->prepare("SELECT id FROM utilisateurs WHERE LOWER(login)=?");
         $c->execute([strtolower($login)]);
         if ($c->fetch()) jsErr('Cet identifiant existe déjà.');
-
         $db->prepare("INSERT INTO utilisateurs (prenom,nom,login,mot_de_passe,role,zone,telephone,statut) VALUES (?,?,?,?,?,?,?,?)")
            ->execute([$prenom, $nom, $login, password_hash($pass, PASSWORD_BCRYPT), $role, $zone, $tel, $statut]);
-
         $newId = (int)$db->lastInsertId();
         addLog($db, 'ok', "Compte créé: $prenom $nom ($role) par {$auth['login']}", $auth['id']);
         jsOk(['id' => $newId, 'message' => "Compte créé pour $prenom $nom."], 201);
     }
 
     // ══════════════════════════════════════════
-    //  UPDATE — Admin seulement
+    //  UPDATE
     // ══════════════════════════════════════════
     elseif ($action === 'update' && $id > 0) {
         $auth = requireAuth(['admin']);
@@ -353,37 +434,27 @@ try {
         $s->execute([$id]);
         $ex = $s->fetch();
         if (!$ex) jsErr('Utilisateur introuvable.', 404);
-
         $prenom = trim((string)($b['prenom']   ?? $ex['prenom']));
         $nom    = trim((string)($b['nom']       ?? ''));
         $login  = trim((string)($b['login']     ?? $ex['login']));
         $zone   = trim((string)($b['zone']      ?? ''));
         $tel    = trim((string)($b['telephone'] ?? ''));
-        $role   = in_array($b['role'] ?? '', ['Admin', 'Agriculteur', 'Technicien']) ? $b['role'] : null;
-        $statut = in_array($b['statut'] ?? '', ['Actif', 'Inactif', 'Suspendu'])     ? $b['statut'] : null;
-
+        $role   = in_array($b['role'] ?? '', ['Admin','Agriculteur','Technicien']) ? $b['role'] : null;
+        $statut = in_array($b['statut'] ?? '', ['Actif','Inactif','Suspendu'])     ? $b['statut'] : null;
         if ($prenom === '') jsErr('Prénom obligatoire.');
         if (!preg_match('/^[a-zA-Z0-9_\-\.]+$/', $login)) jsErr("Identifiant invalide.");
-
         if (strtolower($login) !== strtolower($ex['login'])) {
             $dup = $db->prepare("SELECT id FROM utilisateurs WHERE LOWER(login)=? AND id!=?");
             $dup->execute([strtolower($login), $id]);
             if ($dup->fetch()) jsErr('Cet identifiant existe déjà.');
         }
-
-        $f = ['prenom=?', 'nom=?', 'login=?', 'zone=?', 'telephone=?'];
+        $f = ['prenom=?','nom=?','login=?','zone=?','telephone=?'];
         $p = [$prenom, $nom, $login, $zone, $tel];
         if ($role)   { $f[] = 'role=?';   $p[] = $role; }
         if ($statut) { $f[] = 'statut=?'; $p[] = $statut; }
-
         $np = (string)($b['mot_de_passe'] ?? '');
-        if ($np !== '' && strlen($np) >= 6) {
-            $f[] = 'mot_de_passe=?';
-            $p[] = password_hash($np, PASSWORD_BCRYPT);
-        } elseif ($np !== '' && strlen($np) < 6) {
-            jsErr('Nouveau mot de passe trop court (minimum 6 caractères).');
-        }
-
+        if ($np !== '' && strlen($np) >= 6) { $f[] = 'mot_de_passe=?'; $p[] = password_hash($np, PASSWORD_BCRYPT); }
+        elseif ($np !== '' && strlen($np) < 6) jsErr('Mot de passe trop court (min 6 caractères).');
         $p[] = $id;
         $db->prepare("UPDATE utilisateurs SET " . implode(',', $f) . " WHERE id=?")->execute($p);
         addLog($db, 'ok', "Modifié: $prenom $nom (ID:$id) par {$auth['login']}", $auth['id']);
@@ -391,7 +462,7 @@ try {
     }
 
     // ══════════════════════════════════════════
-    //  DELETE — Admin seulement
+    //  DELETE
     // ══════════════════════════════════════════
     elseif ($action === 'delete' && $id > 0) {
         $auth = requireAuth(['admin']);
@@ -400,16 +471,14 @@ try {
         $u = $s->fetch();
         if (!$u) jsErr('Introuvable.', 404);
         if ($u['login'] === 'admin') jsErr('Impossible de supprimer le compte admin principal.');
-        // Un admin ne peut pas se supprimer lui-même
         if ($u['id'] == $auth['id']) jsErr('Vous ne pouvez pas supprimer votre propre compte.');
-
         $db->prepare("DELETE FROM utilisateurs WHERE id=?")->execute([$id]);
         addLog($db, 'warn', "Supprimé: {$u['prenom']} {$u['nom']} ({$u['login']}) par {$auth['login']}", $auth['id']);
         jsOk(['message' => "Compte {$u['prenom']} {$u['nom']} supprimé."]);
     }
 
     // ══════════════════════════════════════════
-    //  JOURNAL — Admin seulement
+    //  JOURNAL
     // ══════════════════════════════════════════
     elseif ($action === 'journal') {
         requireAuth(['admin']);
@@ -426,14 +495,12 @@ try {
     }
 
     // ══════════════════════════════════════════
-    //  CHECK SESSION — utilisé par le frontend
+    //  CHECK SESSION
     // ══════════════════════════════════════════
     elseif ($action === 'check_session') {
-        if (!empty($_SESSION['user_id'])) {
-            jsOk(['authenticated' => true, 'role' => $_SESSION['user_role']]);
-        } else {
-            jsOk(['authenticated' => false]);
-        }
+        jsOk(!empty($_SESSION['user_id'])
+            ? ['authenticated' => true, 'role' => $_SESSION['user_role']]
+            : ['authenticated' => false]);
     }
 
     else {
