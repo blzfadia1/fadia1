@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>AgriSmart — Plateforme Intelligente d'Agriculture de Précision</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════
    ROOT & RESET
@@ -40,7 +40,10 @@ html{height:100%;overflow:hidden;}
 body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);font-size:14px;height:100%;overflow:hidden;}
 /* ── MODE NUIT ── */
 html.dark{--bg:#0f172a;--white:#1e293b;--border:#334155;--text:#f1f5f9;--text-m:#94a3b8;--slate:#94a3b8;--green-bg:#052e16;--green-xl:#166534;--blue-l:#0c2543;--amber-l:#292204;--red-l:#3f0e0e;--violet-l:#1e0a3c;}
-html.dark .topbar{background:#1e293b;border-color:#334155;}
+html.dark .topbar{background:#1a2010;border-color:rgba(122,181,53,0.12);}
+html.dark .topbar-title{color:#EDE8DE;}
+html.dark .topbar-time{background:#1C2B1A;color:#A8D06A;border-color:rgba(122,181,53,0.15);}
+html.dark .topbar-badge{background:rgba(122,181,53,0.12);border-color:rgba(122,181,53,0.2);color:#A8D06A;}
 html.dark .card,html.dark .stat-card,html.dark .sensor-card{background:#1e293b;border-color:#334155;}
 html.dark .modal-box,html.dark .confirm-box{background:#1e293b;border-color:#334155;}
 html.dark .chat-window{background:#1e293b;}
@@ -330,130 +333,287 @@ html.dark .data-table th{background:#0f172a;}html.dark .data-table tr:hover{back
   flex-direction:row;
 }
 
-/* SIDEBAR */
+/* ══════════════════════════════════════════════════════
+   SIDEBAR — Nouveau design AgriSmart Premium
+══════════════════════════════════════════════════════ */
 .sidebar {
-  width:240px;flex-shrink:0;
-  background:var(--green-d);
-  display:flex;flex-direction:column;
-  height:100vh;
-  overflow:hidden;
-  transition:width .3s ease;
-  position:relative;z-index:50;
+  width: 230px;
+  min-width: 230px;
+  flex-shrink: 0;
+  background: #1C2B1A;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  transition: width .3s ease, min-width .3s ease;
+  position: relative;
+  z-index: 50;
 }
-.sidebar.collapsed{width:64px;}
 
+/* Halos décoratifs */
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: -80px; right: -80px;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(122,181,53,0.13) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.sidebar::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 160px;
+  background: linear-gradient(to top, rgba(0,0,0,0.22), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Mode collapsed */
+.sidebar.collapsed { width: 64px; min-width: 64px; }
+
+/* ── En-tête marque ── */
 .sidebar-header {
-  padding:20px 16px 16px;
-  border-bottom:1px solid rgba(255,255,255,.08);
-  display:flex;align-items:center;gap:12px;
-  flex-shrink:0;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 .sb-logo {
-  width:36px;height:36px;
-  background:linear-gradient(135deg,var(--green-l),var(--green));
-  border-radius:10px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:18px;flex-shrink:0;
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, #7AB535, #4E8C1A);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  box-shadow: 0 4px 14px rgba(122,181,53,0.38);
+  flex-shrink: 0;
 }
 .sb-title {
-  font-size:16px;font-weight:800;color:#fff;
-  white-space:nowrap;overflow:hidden;
-  transition:opacity .2s;
+  font-family: 'Crimson Pro', 'Outfit', serif;
+  font-size: 19px;
+  font-weight: 600;
+  color: #F0EDE6;
+  letter-spacing: 0.3px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: opacity .2s;
 }
-.sidebar.collapsed .sb-title{opacity:0;width:0;}
+.sb-title em { font-style: italic; color: #A8D06A; }
+.sidebar.collapsed .sb-title { opacity: 0; width: 0; }
 
+/* ── Carte utilisateur ── */
 .sidebar-user {
-  padding:14px 16px;
-  border-bottom:1px solid rgba(255,255,255,.08);
-  display:flex;align-items:center;gap:10px;
-  flex-shrink:0;
+  margin: 12px 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 11px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  transition: all .2s;
+}
+.sidebar.collapsed .sidebar-user {
+  margin: 10px 6px;
+  padding: 8px;
+  justify-content: center;
+  border-radius: 10px;
 }
 .sb-avatar {
-  width:34px;height:34px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:16px;font-weight:700;
-  flex-shrink:0;color:#fff;
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #C4622D, #9B3E1A);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700;
+  color: #fff;
+  font-family: 'Crimson Pro', serif;
+  flex-shrink: 0;
 }
 .sb-user-info {
-  overflow:hidden;transition:opacity .2s;
-  white-space:nowrap;
+  overflow: hidden;
+  transition: opacity .2s;
+  white-space: nowrap;
 }
-.sidebar.collapsed .sb-user-info{opacity:0;width:0;}
-.sb-user-name{font-size:13px;font-weight:700;color:#fff;}
-.sb-user-role{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
+.sidebar.collapsed .sb-user-info { opacity: 0; width: 0; }
+.sb-user-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #EDE8DE;
+  line-height: 1.2;
+}
+.sb-user-role { margin-top: 2px; }
 .sb-role-badge {
-  font-size:9px;padding:2px 7px;border-radius:20px;
-  font-weight:700;letter-spacing:.5px;
-  display:inline-block;margin-top:3px;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
 }
-.badge-admin  {background:rgba(124,58,237,.3);color:#c4b5fd;}
-.badge-agri   {background:rgba(34,197,94,.2);color:#86efac;}
-.badge-tech   {background:rgba(2,132,199,.2);color:#7dd3fc;}
+/* Badges couleurs */
+.badge-admin  { background: rgba(168,208,106,0.18); color: #A8D06A; }
+.badge-agri   { background: rgba(122,181,53,0.18);  color: #A8D06A; }
+.badge-tech   { background: rgba(100,160,220,0.18); color: #7dd3fc; }
 
+/* ── Navigation ── */
 .sidebar-nav {
-  flex:1;overflow-y:auto;overflow-x:hidden;
-  padding:12px 8px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 10px;
+  position: relative;
+  z-index: 1;
 }
-.sidebar-nav::-webkit-scrollbar{width:4px;}
-.sidebar-nav::-webkit-scrollbar-track{background:transparent;}
-.sidebar-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+.sidebar-nav::-webkit-scrollbar { width: 3px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
 
 .nav-section-label {
-  font-size:9px;font-weight:700;color:rgba(255,255,255,.3);
-  letter-spacing:1.5px;text-transform:uppercase;
-  padding:8px 10px 4px;
-  white-space:nowrap;overflow:hidden;
-  transition:opacity .2s;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: rgba(255,255,255,0.22);
+  padding: 10px 8px 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: opacity .2s;
 }
-.sidebar.collapsed .nav-section-label{opacity:0;}
+.sidebar.collapsed .nav-section-label { opacity: 0; }
 
 .nav-item {
-  display:flex;align-items:center;gap:10px;
-  padding:9px 10px;border-radius:10px;
-  cursor:pointer;transition:.15s;
-  margin-bottom:2px;
-  white-space:nowrap;
-  color:rgba(255,255,255,.6);
-  font-size:13px;font-weight:500;
-  position:relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: 'Sora', 'Outfit', sans-serif;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.52);
+  margin-bottom: 1px;
+  position: relative;
+  white-space: nowrap;
+  border: 1px solid transparent;
 }
-.nav-item:hover{background:rgba(255,255,255,.07);color:#fff;}
-.nav-item.active{background:rgba(34,197,94,.2);color:#86efac;}
-.nav-item .ni{font-size:18px;flex-shrink:0;width:24px;text-align:center;}
-.nav-item .nl{transition:opacity .2s;overflow:hidden;}
-.sidebar.collapsed .nav-item .nl{opacity:0;width:0;}
-.nav-badge {
-  margin-left:auto;background:var(--red);color:#fff;
-  border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700;
-  flex-shrink:0;transition:opacity .2s;
+.nav-item:hover {
+  background: rgba(255,255,255,0.07);
+  color: #EDE8DE;
 }
-.sidebar.collapsed .nav-badge{opacity:0;}
+.nav-item.active {
+  background: rgba(122,181,53,0.18);
+  color: #C8E89A;
+  font-weight: 500;
+  border-color: rgba(122,181,53,0.22);
+}
+/* Barre verticale active */
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 25%; bottom: 25%;
+  width: 3px;
+  background: #7AB535;
+  border-radius: 0 3px 3px 0;
+}
+.nav-item .ni {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.nav-item .nl {
+  transition: opacity .2s;
+  overflow: hidden;
+}
+.sidebar.collapsed .nav-item .nl { opacity: 0; width: 0; }
 
+.nav-badge {
+  margin-left: auto;
+  background: #C4622D;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 99px;
+  flex-shrink: 0;
+  transition: opacity .2s;
+}
+.sidebar.collapsed .nav-badge { opacity: 0; }
+
+/* ── Pied sidebar ── */
 .sidebar-footer {
-  padding:12px 8px;
-  border-top:1px solid rgba(255,255,255,.08);
-  flex-shrink:0;
+  position: relative;
+  z-index: 1;
+  padding: 10px 10px 14px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
 }
+
+/* Statut DB */
+.sb-db-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 8px;
+  transition: opacity .2s;
+}
+.sidebar.collapsed .sb-db-status { opacity: 0; pointer-events: none; }
+#db-status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #7AB535;
+  box-shadow: 0 0 6px rgba(122,181,53,0.55);
+  flex-shrink: 0;
+}
+#db-status-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  font-family: 'JetBrains Mono', monospace;
+}
+
 .btn-collapse {
-  width:100%;padding:8px 10px;
-  border-radius:10px;border:none;
-  background:rgba(255,255,255,.06);
-  color:rgba(255,255,255,.5);
-  cursor:pointer;font-size:12px;font-weight:600;
-  display:flex;align-items:center;gap:8px;
-  transition:.15s;font-family:'Outfit',sans-serif;
+  width: 100%; padding: 8px 10px;
+  border-radius: 9px; border: none;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.45);
+  cursor: pointer;
+  font-size: 11.5px; font-weight: 500;
+  display: flex; align-items: center; gap: 8px;
+  transition: all .18s;
+  font-family: 'Sora', 'Outfit', sans-serif;
+  margin-bottom: 6px;
 }
-.btn-collapse:hover{background:rgba(255,255,255,.1);color:#fff;}
+.btn-collapse:hover { background: rgba(255,255,255,0.09); color: #EDE8DE; }
+.sidebar.collapsed .btn-collapse .nl { opacity: 0; width: 0; }
+
 .btn-logout {
-  width:100%;padding:8px 10px;
-  border-radius:10px;border:none;
-  background:rgba(220,38,38,.15);
-  color:#fca5a5;
-  cursor:pointer;font-size:12px;font-weight:600;
-  display:flex;align-items:center;gap:8px;margin-top:4px;
-  transition:.15s;font-family:'Outfit',sans-serif;
+  width: 100%; padding: 9px 10px;
+  border-radius: 9px; border: none;
+  background: rgba(196,98,45,0.18);
+  border: 1px solid rgba(196,98,45,0.25);
+  color: #F0A070;
+  cursor: pointer;
+  font-size: 12px; font-weight: 500;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: all .18s;
+  font-family: 'Sora', 'Outfit', sans-serif;
 }
-.btn-logout:hover{background:rgba(220,38,38,.25);color:#ff8080;}
+.btn-logout:hover { background: rgba(196,98,45,0.30); color: #FFB896; }
+.sidebar.collapsed .btn-logout .nl { opacity: 0; width: 0; }
 
 /* CONTENT */
 .content-area {
@@ -465,31 +625,52 @@ html.dark .data-table th{background:#0f172a;}html.dark .data-table tr:hover{back
 
 /* TOP BAR */
 .topbar {
-  height:60px;flex-shrink:0;
-  background:var(--white);
-  border-bottom:1px solid var(--border);
-  display:flex;align-items:center;
-  padding:0 24px;gap:16px;
-  box-shadow:0 1px 4px rgba(0,0,0,.05);
+  height: 56px;
+  flex-shrink: 0;
+  background: #FDFAF5;
+  border-bottom: 1px solid rgba(107,76,53,0.10);
+  display: flex;
+  align-items: center;
+  padding: 0 22px;
+  gap: 14px;
+  box-shadow: 0 1px 6px rgba(107,76,53,0.06);
 }
-.topbar-title {font-size:18px;font-weight:700;}
-.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+.topbar-title {
+  font-family: 'Crimson Pro', 'Outfit', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2C1D12;
+  letter-spacing: -0.2px;
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .topbar-badge {
-  background:var(--green-bg);
-  border:1px solid var(--green-xl);
-  color:var(--green);
-  border-radius:8px;
-  padding:5px 12px;
-  font-size:12px;font-weight:700;
-  display:flex;align-items:center;gap:6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(122,181,53,0.10);
+  border: 1px solid rgba(122,181,53,0.25);
+  padding: 5px 12px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #3B6D11;
 }
 .dot-live {
-  width:7px;height:7px;border-radius:50%;
-  background:var(--green-l);
-  animation:pulse 2s ease-in-out infinite;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #7AB535;
+  animation: pulse 1.8s ease-in-out infinite;
 }
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(1.3);}}
-.topbar-time{font-size:12px;color:var(--slate);font-family:'JetBrains Mono',monospace;}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.45;transform:scale(.8);} }
+.topbar-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #8A6B50;
+  background: #EDE8DE;
+  padding: 5px 11px;
+  border-radius: 8px;
+  border: 1px solid rgba(107,76,53,0.10);
+}
 
 /* PAGE CONTENT */
 .pages-container{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;}
@@ -922,10 +1103,10 @@ input[type=range]::-webkit-slider-thumb{
 .mobile-nav {
   display:none;
   position:fixed;bottom:0;left:0;right:0;z-index:200;
-  background:var(--green-d);
-  border-top:1px solid rgba(255,255,255,.1);
+  background:#1C2B1A;
+  border-top:1px solid rgba(122,181,53,0.15);
   padding:6px 4px calc(6px + env(safe-area-inset-bottom));
-  box-shadow:0 -4px 20px rgba(0,0,0,.2);
+  box-shadow:0 -4px 20px rgba(0,0,0,.25);
 }
 .mobile-nav-items {
   display:flex;
@@ -936,22 +1117,23 @@ input[type=range]::-webkit-slider-thumb{
   display:flex;flex-direction:column;align-items:center;gap:3px;
   padding:6px 8px;border-radius:10px;
   cursor:pointer;transition:.15s;
-  color:rgba(255,255,255,.5);
-  font-size:9px;font-weight:700;letter-spacing:.3px;
+  color:rgba(255,255,255,.45);
+  font-size:9px;font-weight:600;letter-spacing:.3px;
   text-transform:uppercase;min-width:48px;
-  border:none;background:transparent;font-family:'Outfit',sans-serif;
+  border:none;background:transparent;
+  font-family:'Sora','Outfit',sans-serif;
   -webkit-tap-highlight-color:transparent;
 }
 .mob-nav-item .mni{font-size:20px;line-height:1;}
-.mob-nav-item.active{color:var(--green-l);background:rgba(34,197,94,.15);}
-.mob-nav-item:active{background:rgba(255,255,255,.1);}
+.mob-nav-item.active{color:#C8E89A;background:rgba(122,181,53,0.18);}
+.mob-nav-item:active{background:rgba(255,255,255,.08);}
 
 /* ── MOBILE TOPBAR HAMBURGER ── */
 .topbar-menu-btn {
   display:none;
   background:none;border:none;cursor:pointer;
   font-size:22px;padding:4px 8px 4px 0;
-  color:var(--text);
+  color:#2C1D12;
   -webkit-tap-highlight-color:transparent;
 }
 
@@ -1568,12 +1750,15 @@ html.dark .chat-input-row{background:#1e293b;}
 
   <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar">
+    <!-- En-tête marque -->
     <div class="sidebar-header">
-      <div class="sb-logo">🌿</div>
-      <div class="sb-title">AgriSmart</div>
+      <div class="sb-logo">🌾</div>
+      <div class="sb-title">Agri<em>Smart</em></div>
     </div>
+
+    <!-- Carte utilisateur -->
     <div class="sidebar-user">
-      <div class="sb-avatar" id="sb-avatar" style="background:#16a34a;">A</div>
+      <div class="sb-avatar" id="sb-avatar">A</div>
       <div class="sb-user-info">
         <div class="sb-user-name" id="sb-uname">Admin</div>
         <div class="sb-user-role">
@@ -1581,14 +1766,23 @@ html.dark .chat-input-row{background:#1e293b;}
         </div>
       </div>
     </div>
+
+    <!-- Navigation -->
     <div class="sidebar-nav" id="sidebar-nav"></div>
+
+    <!-- Pied de page -->
     <div class="sidebar-footer">
+      <!-- Statut MySQL -->
+      <div class="sb-db-status">
+        <div id="db-status-dot"></div>
+        <span id="db-status-label">MySQL…</span>
+      </div>
       <button class="btn-collapse" onclick="toggleSidebar()">
         <span id="collapse-icon">◀</span>
         <span class="nl">Réduire</span>
       </button>
       <button class="btn-logout" onclick="doLogout()">
-        🚪 <span class="nl">Déconnexion</span>
+        <span>🚪</span> <span class="nl">Déconnexion</span>
       </button>
     </div>
   </div>
@@ -1632,7 +1826,7 @@ html.dark .chat-input-row{background:#1e293b;}
             <div class="card-body">
               <div class="sensor-grid" id="sensor-grid"></div>
             </div>
-          </div>
+         </div>
 
           <!-- Alertes -->
           <div class="card">
@@ -2166,18 +2360,18 @@ fr:{
   reduce:'Réduire', logout:'Déconnexion',
   /* Topbar titles */
   ttDashboard:'Tableau de Bord', ttRF:'Random Forest — Recommandation Culture',
-  ttLSTM:'Prévision LSTM — Séries Temporelles', ttIoT:'IoT · ESP32 · LoRaWAN',
+  ttLSTM:'Prévision LSTM — Séries Temporelles', ttIoT:'IoT · ESP32',
   ttHistory:'Historique des Données', ttAdmin:'Administration', ttGuide:'Guide Utilisation',
   /* Nav labels */
   navDashboard:'Tableau de Bord', navRF:'Random Forest', navLSTM:'Prévision LSTM',
-  navIoT:'IoT / ESP32 / LoRa', navHistory:'Historique', navAdmin:'Administration',
+  navIoT:'IoT / ESP32', navHistory:'Historique', navAdmin:'Administration',
   navGuide:'Guide Utilisation',
   navSecPrincipal:'Principal', navSecGestion:'Gestion',
   navSecTerrain:'Mon Terrain', navSecAide:'Aide',
   navSecSystems:'Systèmes', navSecData:'Données',
   navDashboardAgri:'Mon Tableau de Bord', navRFAgri:'Quelle Culture ?',
   navLSTMAgri:'Prévisions Météo', navHistoryAgri:'Mes Mesures', navGuideAgri:'Comment Utiliser ?',
-  navDashboardTech:'Vue Globale', navIoTTech:'Capteurs & LoRa', navLSTMTech:'Modèles IA',
+  navDashboardTech:'Vue Globale', navIoTTech:'Capteurs', navLSTMTech:'Modèles IA',
   /* Stat cards dashboard (générés par JS) */
   statRF:'Précision RF', statLSTM:'Précision LSTM', statSensors:'Capteurs actifs', statBattery:'Autonomie batterie',
   /* Sensor names (générés par JS) */
@@ -2197,12 +2391,9 @@ fr:{
   lstmDesc:"Le <strong>LSTM (Long Short-Term Memory)</strong> est un réseau de neurones spécialisé dans les séries temporelles. Il \"mémorise\" les tendances passées pour prédire l'avenir.",
   lstmIrrigation:"Prévisions d'Irrigation",
   /* IoT page stats */
-  iotNoeuds:'Nœuds ESP32 actifs', iotSignal:'Signal LoRa moyen',
+  iotNoeuds:'Nœuds ESP32 actifs',
   iotBat:'Autonomie batterie', iotInterval:'Intervalle envoi',
-  /* LoRa diagram */
-  loraCapt:'Capteurs terrain', loraServeur:'Serveur MQTT',
-  /* Lora arch desc */
-  loraIntro:"Le <strong>LoRaWAN</strong> permet à vos capteurs ESP32 de transmettre des données sur <strong>10–15 km</strong> avec une consommation ultra-faible. Idéal pour les grandes exploitations sans couverture WiFi.",
+  
   /* RF */
   rfBtnTxt:'🌲 Lancer l\'Analyse (100 Arbres)',
   rfEmpty:'Lancez l\'analyse pour voir la recommandation',
@@ -2225,7 +2416,7 @@ fr:{
     'Capteurs ESP32 — Données en Direct':'Capteurs ESP32 — Données en Direct',
     'Alertes Actives':'Alertes Actives',
     'Prévision LSTM — Humidité Sol (7j)':'Prévision LSTM — Humidité Sol (7j)',
-    'Réseau LoRaWAN':'Réseau LoRaWAN',
+    
     'Architecture IA du Système — Comment ça marche ?':"Architecture IA du Système — Comment ça marche ?",
     'Données de Votre Terrain':'Données de Votre Terrain',
     'Recommandation':'Recommandation',
@@ -2236,7 +2427,7 @@ fr:{
     'Prévision Température — 7 Jours':'Prévision Température — 7 Jours',
     'Comment fonctionne le LSTM ?':'Comment fonctionne le LSTM ?',
     'Carte des Capteurs Terrain':'Carte des Capteurs Terrain',
-    'Architecture LoRaWAN — De la Plante au Cloud':'Architecture LoRaWAN — De la Plante au Cloud',
+    
     'Configuration des Nœuds ESP32':'Configuration des Nœuds ESP32',
     'Historique des Mesures':'Historique des Mesures',
     'Activité Récente':'Activité Récente',
@@ -2253,10 +2444,10 @@ ar:{
   tabA:' مدير', tabB:' 🌾 مزارع', tabC:' تقني',
   reduce:'طي القائمة', logout:'تسجيل الخروج',
   ttDashboard:'لوحة التحكم', ttRF:'الغابة العشوائية — توصية الثقافة',
-  ttLSTM:'تنبؤ LSTM — السلاسل الزمنية', ttIoT:'IoT · ESP32 · LoRaWAN',
+  ttLSTM:'تنبؤ LSTM — السلاسل الزمنية', ttIoT:'IoT · ESP32 ',
   ttHistory:'سجل البيانات', ttAdmin:'الإدارة', ttGuide:'دليل الاستخدام',
   navDashboard:'لوحة التحكم', navRF:'الغابة العشوائية', navLSTM:'تنبؤ LSTM',
-  navIoT:'IoT / ESP32 / LoRa', navHistory:'السجل', navAdmin:'الإدارة',
+  navIoT:'IoT / ESP32', navHistory:'السجل', navAdmin:'الإدارة',
   navGuide:'دليل الاستخدام',
   navSecPrincipal:'رئيسي', navSecGestion:'إدارة',
   navSecTerrain:'أرضي', navSecAide:'مساعدة',
@@ -2277,10 +2468,9 @@ ar:{
   lstmFenetre:'نافذة الإدخال', lstmErreur:'خطأ MAE', lstmAmeliore:'↓ تحسّن',
   lstmDesc:'<strong>LSTM</strong> هي شبكة عصبية متخصصة في السلاسل الزمنية. تحفظ الاتجاهات الماضية للتنبؤ بالمستقبل.',
   lstmIrrigation:'جدول الري',
-  iotNoeuds:'عقد ESP32 نشطة', iotSignal:'متوسط إشارة LoRa',
+  iotNoeuds:'عقد ESP32 نشطة', 
   iotBat:'عمر البطارية', iotInterval:'فترة الإرسال',
-  loraCapt:'مستشعرات الأرض', loraServeur:'خادم MQTT',
-  loraIntro:'يتيح <strong>LoRaWAN</strong> لمستشعرات ESP32 إرسال البيانات على <strong>10-15 كم</strong> باستهلاك منخفض جداً.',
+  
   rfBtnTxt:'🌲 تشغيل التحليل (100 شجرة)',
   rfEmpty:'شغّل التحليل لرؤية التوصية',
   rfDesc:'اضبط القيم حسب مستشعرات ESP32. ستحلل خوارزمية <strong>الغابة العشوائية</strong> (100 شجرة) أرضك.',
@@ -2297,7 +2487,7 @@ ar:{
     'Capteurs ESP32 — Données en Direct':'مستشعرات ESP32 — بيانات مباشرة',
     'Alertes Actives':'التنبيهات النشطة',
     'Prévision LSTM — Humidité Sol (7j)':'توقع LSTM — رطوبة التربة (7 أيام)',
-    'Réseau LoRaWAN':'شبكة LoRaWAN',
+    
     'Architecture IA du Système — Comment ça marche ?':'بنية نظام الذكاء الاصطناعي',
     'Données de Votre Terrain':'بيانات أرضك',
     'Recommandation':'التوصية',
@@ -2308,7 +2498,7 @@ ar:{
     'Prévision Température — 7 Jours':'توقع درجة الحرارة — 7 أيام',
     'Comment fonctionne le LSTM ?':'كيف يعمل LSTM؟',
     'Carte des Capteurs Terrain':'خريطة المستشعرات',
-    'Architecture LoRaWAN — De la Plante au Cloud':'بنية LoRaWAN — من النبتة إلى السحابة',
+   
     'Configuration des Nœuds ESP32':'إعداد عقد ESP32',
     'Historique des Mesures':'سجل القياسات',
     'Activité Récente':'النشاط الأخير',
@@ -2325,17 +2515,17 @@ en:{
   tabA:' Admin', tabB:'🌾 Farmer', tabC:' Technician',
   reduce:'Collapse', logout:'Sign Out',
   ttDashboard:'Dashboard', ttRF:'Random Forest — Crop Recommendation',
-  ttLSTM:'LSTM Forecast — Time Series', ttIoT:'IoT · ESP32 · LoRaWAN',
+  ttLSTM:'LSTM Forecast — Time Series', ttIoT:'IoT · ESP32',
   ttHistory:'Data History', ttAdmin:'Administration', ttGuide:'User Guide',
   navDashboard:'Dashboard', navRF:'Random Forest', navLSTM:'LSTM Forecast',
-  navIoT:'IoT / ESP32 / LoRa', navHistory:'History', navAdmin:'Administration',
+  navIoT:'IoT / ESP32', navHistory:'History', navAdmin:'Administration',
   navGuide:'User Guide',
   navSecPrincipal:'Main', navSecGestion:'Management',
   navSecTerrain:'My Field', navSecAide:'Help',
   navSecSystems:'Systems', navSecData:'Data',
   navDashboardAgri:'My Dashboard', navRFAgri:'Which Crop?',
   navLSTMAgri:'Weather Forecast', navHistoryAgri:'My Readings', navGuideAgri:'How to Use?',
-  navDashboardTech:'Overview', navIoTTech:'Sensors & LoRa', navLSTMTech:'AI Models',
+  navDashboardTech:'Overview', navIoTTech:'Sensors', navLSTMTech:'AI Models',
   statRF:'RF Accuracy', statLSTM:'LSTM Accuracy', statSensors:'Active sensors', statBattery:'Battery life',
   sTemp:'Temperature', sHumSol:'Soil Moisture', sPH:'Soil pH', sAzote:'Nitrogen (N)',
   sPhospho:'Phosphorus (P)', sHumAir:'Air Humidity', sLux:'Luminosity', sCO2:'CO₂',
@@ -2349,11 +2539,9 @@ en:{
   lstmFenetre:'Input window', lstmErreur:'MAE Error', lstmAmeliore:'↓ Improved',
   lstmDesc:'The <strong>LSTM (Long Short-Term Memory)</strong> is a neural network specialized in time series. It "memorizes" past trends to predict the future.',
   lstmIrrigation:'Irrigation Schedule',
-  iotNoeuds:'Active ESP32 nodes', iotSignal:'Average LoRa signal',
+  iotNoeuds:'Active ESP32 nodes', 
   iotBat:'Battery life', iotInterval:'Send interval',
-  loraCapt:'Field sensors', loraServeur:'MQTT Server',
-  loraIntro:'<strong>LoRaWAN</strong> allows ESP32 sensors to transmit data over <strong>10–15 km</strong> with ultra-low power consumption.',
-  rfBtnTxt:'🌲 Run Analysis (100 Trees)',
+ 
   rfEmpty:'Run the analysis to see the recommendation',
   rfDesc:'Adjust values from your ESP32 sensors. The <strong>Random Forest</strong> algorithm (100 trees) will analyze your field.',
   lstmPredDesc:'Time prediction based on the last 30 days of measurements',
@@ -2369,7 +2557,7 @@ en:{
     'Capteurs ESP32 — Données en Direct':'ESP32 Sensors — Live Data',
     'Alertes Actives':'Active Alerts',
     'Prévision LSTM — Humidité Sol (7j)':'LSTM Forecast — Soil Moisture (7d)',
-    'Réseau LoRaWAN':'LoRaWAN Network',
+   
     'Architecture IA du Système — Comment ça marche ?':'AI System Architecture — How it works?',
     'Données de Votre Terrain':'Your Field Data',
     'Recommandation':'Recommendation',
@@ -2380,7 +2568,7 @@ en:{
     'Prévision Température — 7 Jours':'Temperature Forecast — 7 Days',
     'Comment fonctionne le LSTM ?':'How does LSTM work?',
     'Carte des Capteurs Terrain':'Field Sensor Map',
-    'Architecture LoRaWAN — De la Plante au Cloud':'LoRaWAN Architecture — Plant to Cloud',
+   
     'Configuration des Nœuds ESP32':'ESP32 Node Configuration',
     'Historique des Mesures':'Measurement History',
     'Activité Récente':'Recent Activity',
