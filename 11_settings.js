@@ -21,7 +21,7 @@ function toggleDarkMode() {
   _darkMode = !_darkMode;
   document.documentElement.classList.toggle('dark', _darkMode);
   const btn = document.getElementById('btn-dark');
-  if (btn) btn.textContent = _darkMode ? 'sun' : 'moon';
+  if (btn) btn.textContent = _darkMode ? '☀️' : '🌙';
   try { localStorage.setItem('agrismart_dark', _darkMode ? '1' : '0'); } catch(e) {}
 }
 (function() {

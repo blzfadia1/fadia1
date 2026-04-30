@@ -1,7 +1,8 @@
 /* ════════════════════════════════════════════════════════════════
-   AgriSmart — 03 — APP — Initialisation, Navigation, Capteurs live
+   AgriSmart — 03_app.js
+   APP — Initialisation, Navigation, Capteurs live
    initApp(), buildSidebarNav(), navigateTo(), toggleSidebar(), updateLiveSensors()
-   Fichier : 03_app.js
+   ✅ CNN intégré : buildCNNPage() + refreshCNNData() toutes les 60s
 ════════════════════════════════════════════════════════════════ */
 
 "use strict";
@@ -13,46 +14,44 @@ function initApp() {
   const usr = CURRENT_USER || {
     avatar:'A', nom:'Utilisateur', badgeLabel:'USER', badgeClass:'badge-agri'
   };
-  // Sidebar user info depuis MySQL
   document.getElementById('sb-avatar').textContent  = usr.avatar || usr.prenom?.[0] || 'U';
   document.getElementById('sb-avatar').style.background = state.role==='admin'?'#7c3aed':state.role==='agriculteur'?'#16a34a':'#0284c7';
   document.getElementById('sb-uname').textContent   = usr.nom;
   document.getElementById('sb-badge').textContent   = usr.badgeLabel;
   document.getElementById('sb-badge').className     = `sb-role-badge ${usr.badgeClass}`;
 
-  // Build sidebar nav
+  /* Sidebar + mobile nav */
   buildSidebarNav();
-  // Build mobile nav
   buildMobileNav();
 
-  // Init all pages
+  /* Init toutes les pages */
   buildDashboard();
   buildRFPage();
   buildLSTMPage();
   buildIoTPage();
   buildHistoryPage();
-  if(state.role==='admin') buildAdminPage();
+  if (state.role === 'admin') buildAdminPage();
+  buildCNNPage();   // ← CNN
 
-  // Clock
+  /* Horloge topbar */
   setInterval(() => {
     document.getElementById('topbar-time').textContent = new Date().toLocaleTimeString('fr-FR');
   }, 1000);
 
-  // Live sensor updates depuis MySQL toutes les 10 secondes
+  /* Mises à jour périodiques */
   setInterval(updateLiveSensors, 10000);
-  // Rafraîchir alertes toutes les 30 secondes
   setInterval(loadAlertes, 30000);
+  setInterval(refreshCNNData, 60000);   // ← CNN : rafraîchir les données live
 
   navigateTo('dashboard');
   showNotif(`${typeof T==='function'?T('notifWelcome'):'✅ Bienvenue'}, ${usr.nom} !`);
 
-  // ── Connexion MySQL
   checkDbStatus();
   loadDashboardStats();
 }
 
 /* ═══════════════════════════════════════════════════════
-   CHECK DB STATUS — vérifie que MySQL répond
+   CHECK DB STATUS
 ═══════════════════════════════════════════════════════ */
 async function checkDbStatus() {
   const d = await apiCall('stats');
@@ -67,6 +66,9 @@ async function checkDbStatus() {
   }
 }
 
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR NAV
+═══════════════════════════════════════════════════════ */
 function buildSidebarNav() {
   const nav   = document.getElementById('sidebar-nav');
   const items = NAV_CONFIG[state.role];
@@ -85,6 +87,9 @@ function buildSidebarNav() {
   });
 }
 
+/* ═══════════════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════════════ */
 function navigateTo(id) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -94,27 +99,36 @@ function navigateTo(id) {
   if (pi) pi.classList.add('active');
   state.currentPage = id;
 
-  // Close mobile sidebar if open
+  /* Fermer sidebar mobile */
   document.getElementById('sidebar').classList.remove('mob-open');
   document.getElementById('sidebar-overlay').classList.remove('open');
 
-  // Update mobile bottom nav
+  /* Mobile bottom nav */
   updateMobileNav(id);
 
+  /* Titre topbar */
   const labels = {
-    dashboard:'Tableau de Bord', rf:'Random Forest — Recommandation Culture',
-    lstm:'Prévision LSTM — Séries Temporelles', iot:'IoT · ESP32 · LoRaWAN',
-    history:'Historique des Données', admin:'Administration',
+    dashboard : 'Tableau de Bord',
+    rf        : 'Random Forest — Recommandation Culture',
+    lstm      : 'Prévision LSTM — Séries Temporelles',
+    iot       : 'IoT · ESP32 · LoRaWAN',
+    history   : 'Historique des Données',
+    admin     : 'Administration',
+    cnn       : 'Analyse CNN — Zones Agricoles',
   };
   document.getElementById('topbar-title').textContent = labels[id] || id;
 
-  // Draw charts on first visit
-  if (id==='dashboard')  { drawLSTMChart('lstm-chart', false); loadAlertes(); loadNoeudsLoRa(); loadDashboardStats(); }
-  if (id==='lstm')       { drawLSTMChart('lstm-big', true); drawTempChart(); }
-  if (id==='history')    buildHistoryPage(); // recharger les données MySQL
-  if (id==='iot')        buildIoTPage();     // recharger les nœuds MySQL
+  /* Hooks par page */
+  if (id === 'dashboard') { drawLSTMChart('lstm-chart', false); loadAlertes(); loadNoeudsLoRa(); loadDashboardStats(); }
+  if (id === 'lstm')      { drawLSTMChart('lstm-big', true); drawTempChart(); }
+  if (id === 'history')   buildHistoryPage();
+  if (id === 'iot')       buildIoTPage();
+  if (id === 'cnn')       buildCNNPage();   // ← CNN : recharge données live à chaque visite
 }
 
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR TOGGLE
+═══════════════════════════════════════════════════════ */
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
   state.sidebarCollapsed = !state.sidebarCollapsed;
@@ -123,9 +137,8 @@ function toggleSidebar() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   SENSOR DATA (simulated live)
+   SENSOR DATA LIVE (depuis MySQL, fallback aléatoire)
 ═══════════════════════════════════════════════════════ */
-// Données capteurs depuis MySQL (fallback aléatoire si hors-ligne)
 let _lastCapteurs = null;
 
 async function updateLiveSensors() {
@@ -135,7 +148,6 @@ async function updateLiveSensors() {
   const d = await apiCall('capteurs_live');
   if (d.success && d.capteurs && d.capteurs.length > 0) {
     _lastCapteurs = d.capteurs;
-    // Agréger toutes les mesures (moyenne des nœuds actifs)
     const avg = (key) => {
       const vals = d.capteurs.map(c=>parseFloat(c[key])).filter(v=>!isNaN(v)&&v>0);
       return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : null;
@@ -161,18 +173,18 @@ async function updateLiveSensors() {
         <div class="sensor-status s-${s.status}">${s.statusLabel}</div>
       </div>`).join('');
   } else {
-    // Fallback hors-ligne : données aléatoires
+    /* Fallback hors-ligne */
     const hs = Math.round(35+Math.random()*30);
     const _t2 = typeof T === 'function' ? T : k => k;
     const data = [
-      { emoji:'🌡️', name:_t2('sTemp'),     val: (22+Math.random()*8).toFixed(1)+'°C',  status:'ok',                            statusLabel:_t2('stNormal')+' (local)' },
-      { emoji:'💧', name:_t2('sHumSol'),   val: hs+'%',                                status:hs<30?'warn':'ok',               statusLabel:hs<30?_t2('stSurveiller'):_t2('stBon') },
-      { emoji:'🧪', name:_t2('sPh'),       val: (5.8+Math.random()*2).toFixed(1),      status:'ok',                            statusLabel:_t2('stNeutre')+' (local)' },
-      { emoji:'🌿', name:_t2('sAzote'),    val: Math.round(55+Math.random()*40)+' kg', status:'ok',                            statusLabel:_t2('stSuffisant') },
-      { emoji:'⚗️', name:_t2('sPhosphore'),val: Math.round(30+Math.random()*30)+' kg', status:'ok',                            statusLabel:_t2('stOk') },
-      { emoji:'🌧️', name:_t2('sHumAir'),  val: Math.round(50+Math.random()*30)+'%',   status:'ok',                            statusLabel:_t2('stNormal') },
-      { emoji:'☀️', name:_t2('sLum'),      val: Math.round(600+Math.random()*800)+' lx',status:'ok',                           statusLabel:_t2('stBon') },
-      { emoji:'🔬', name:_t2('sCo2'),      val: Math.round(380+Math.random()*50)+' ppm',status:'ok',                           statusLabel:_t2('stNormal') },
+      { emoji:'🌡️', name:_t2('sTemp'),     val: (22+Math.random()*8).toFixed(1)+'°C',  status:'ok',         statusLabel:_t2('stNormal')+' (local)' },
+      { emoji:'💧', name:_t2('sHumSol'),   val: hs+'%',                                status:hs<30?'warn':'ok', statusLabel:hs<30?_t2('stSurveiller'):_t2('stBon') },
+      { emoji:'🧪', name:_t2('sPh'),       val: (5.8+Math.random()*2).toFixed(1),      status:'ok',         statusLabel:_t2('stNeutre')+' (local)' },
+      { emoji:'🌿', name:_t2('sAzote'),    val: Math.round(55+Math.random()*40)+' kg', status:'ok',         statusLabel:_t2('stSuffisant') },
+      { emoji:'⚗️', name:_t2('sPhosphore'),val: Math.round(30+Math.random()*30)+' kg', status:'ok',         statusLabel:_t2('stOk') },
+      { emoji:'🌧️', name:_t2('sHumAir'),  val: Math.round(50+Math.random()*30)+'%',   status:'ok',         statusLabel:_t2('stNormal') },
+      { emoji:'☀️', name:_t2('sLum'),      val: Math.round(600+Math.random()*800)+' lx',status:'ok',        statusLabel:_t2('stBon') },
+      { emoji:'🔬', name:_t2('sCo2'),      val: Math.round(380+Math.random()*50)+' ppm',status:'ok',        statusLabel:_t2('stNormal') },
     ];
     grid.innerHTML = data.map(s => `
       <div class="sensor-card ${s.status}">

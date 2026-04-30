@@ -8,6 +8,9 @@
    ✅ Conserve : pièces jointes (images/fichiers)
    Fichier : 10_chat_mysql.js
 ════════════════════════════════════════════════════════════════ */
+let pendingImageB64  = null;
+let pendingImageType = null;
+let pendingImageName = null;
 "use strict";
 
 /* ═══════════════════════════════════════════════════════
@@ -819,7 +822,81 @@ async function loadDashboardStats() {
 async function addAlertManual(type, titre, desc, nodeId = '') {
   return await apiCall('alerte_add', 'POST', { type, titre, description: desc, node_id: nodeId });
 }
+function handleImageSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showNotif('❌ Image trop grande (max 5 Mo)'); input.value=''; return; }
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    pendingImageB64  = e.target.result.split(',')[1];
+    pendingImageType = file.type;
+    pendingImageName = file.name;
+    // Afficher aperçu
+    document.getElementById('preview-img').src = e.target.result;
+    document.getElementById('preview-name').textContent = `📎 ${file.name} (${Math.round(file.size/1024)} Ko)`;
+    document.getElementById('chat-image-preview').style.display = 'flex';
+    showNotif('📷 Image prête — appuyez sur Envoyer');
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+} 
+async function sendChatMessage() {
+  if (chatIsTyping) return;
+  const input    = document.getElementById('chat-input');
+  const userText = (input?.value || '').trim();
+  if (!userText && !pendingImageB64) return;
 
+  let userContent;
+  if (pendingImageB64) {
+    userContent = [
+      { type: 'image', source: { type: 'base64', media_type: pendingImageType, data: pendingImageB64 } },
+      { type: 'text',  text: userText || 'Analyse cette image agricole et donne tes recommandations.' }
+    ];
+    appendRawMessage('user', `🖼️ <strong>${pendingImageName}</strong>${userText ? '<br>'+userText : ''}`);
+    document.getElementById('chat-image-preview').style.display = 'none';
+  } else {
+    userContent = userText;
+    appendRawMessage('user', userText);
+  }
+
+  if (input) input.value = '';
+  const hadImage = !!pendingImageB64;
+  const imgName  = pendingImageName;
+  pendingImageB64 = pendingImageType = pendingImageName = null;
+
+  chatHistory.push({ role: 'user', content: userContent });
+  chatIsTyping = true;
+  appendTypingIndicator();
+
+  try {
+    const res  = await fetch('api/chat.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ messages: chatHistory, lang: currentLang||'fr', role: state?.role||'admin' })
+    });
+    removeTypingIndicator();
+    chatIsTyping = false;
+    const data = await res.json();
+
+    if (data.success && data.reply) {
+      if (hadImage) {
+        chatHistory[chatHistory.length-1] = { role:'user', content:`[Image: ${imgName}] ${userText||''}` };
+      }
+      chatHistory.push({ role:'assistant', content: data.reply });
+      appendMessage('assistant', data.reply);
+    } else {
+      appendMessage('assistant', `⚠️ ${data.message||'Erreur.'}`);
+      chatHistory.pop();
+    }
+  } catch(err) {
+    removeTypingIndicator(); chatIsTyping = false;
+    appendMessage('assistant', `🌐 Erreur réseau : ${err.message}`);
+    chatHistory.pop();
+  }
+} function annulerImage() {
+  pendingImageB64 = pendingImageType = pendingImageName = null;
+  document.getElementById('chat-image-preview').style.display = 'none';
+}
 /* ═══════════════════════════════════════════════════════
    VISIBILITÉ CHATBOT
 ═══════════════════════════════════════════════════════ */

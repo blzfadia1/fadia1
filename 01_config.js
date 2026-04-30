@@ -1,6 +1,7 @@
 /* ════════════════════════════════════════════════════════════════
-   AgriSmart — 01_config.js — CORRIGE
-   NAV_CONFIG maintenant dynamique : labels via T()
+   AgriSmart — 01_config.js
+   NAV_CONFIG dynamique : labels via T()
+   ✅ CNN ajouté dans les 3 rôles
 ════════════════════════════════════════════════════════════════ */
 "use strict";
 
@@ -56,6 +57,7 @@ function getNavConfig() {
       { id:'rf',        icon:'🌲', label: T('navRF') },
       { id:'lstm',      icon:'📈', label: T('navLSTM') },
       { id:'iot',       icon:'📡', label: T('navIoT') },
+      { id:'cnn',       icon:'🗺️', label: T('navCNN') },
       { section: T('navSecGestion') },
       { id:'history',   icon:'📜', label: T('navHistory'), badge:'24' },
       { id:'admin',     icon:'👑', label: T('navAdmin') },
@@ -65,6 +67,7 @@ function getNavConfig() {
       { id:'dashboard', icon:'🏠', label: T('navDashboardAgri') },
       { id:'rf',        icon:'🌾', label: T('navRFAgri') },
       { id:'lstm',      icon:'🌧️', label: T('navLSTMAgri') },
+      { id:'cnn',       icon:'🗺️', label: T('navCNN') },
       { section: T('navSecAide') },
       { id:'history',   icon:'📜', label: T('navHistoryAgri') },
     ],
@@ -73,6 +76,7 @@ function getNavConfig() {
       { id:'dashboard', icon:'🏠', label: T('navDashboardTech') },
       { id:'iot',       icon:'📡', label: T('navIoTTech') },
       { id:'lstm',      icon:'📈', label: T('navLSTMTech') },
+      { id:'cnn',       icon:'🗺️', label: T('navCNN') },
       { section: T('navSecDonnees') },
       { id:'history',   icon:'📜', label: T('navHistoryTech') },
     ],
