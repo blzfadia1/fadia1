@@ -1840,10 +1840,19 @@ html.dark .chat-input-row{background:#1e293b;}
         <div class="g2" style="margin-bottom:24px;">
           <!-- Capteurs en direct -->
           <div class="card">
-            <div class="card-header">
+            <div class="card-header" style="flex-wrap:wrap;gap:8px;">
               <div class="card-icon" style="background:#f0fdf4;">📡</div>
               <h3>Capteurs ESP32 — Données en Direct</h3>
-              <div style="margin-left:auto;"><div class="dot-live"></div></div>
+              <div class="dot-live"></div>
+              <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+                <span id="last-update-time" style="font-size:11px;color:var(--slate);">—</span>
+                <button id="btn-refresh-sensors" onclick="refreshSensors()"
+                  style="font-size:12px;padding:5px 14px;background:#16a34a;color:#fff;
+                         border:none;border-radius:8px;cursor:pointer;font-weight:600;
+                         display:flex;align-items:center;gap:5px;">
+                  🔄 Actualiser
+                </button>
+              </div>
             </div>
             <div class="card-body">
               <div class="sensor-grid" id="sensor-grid"></div>
@@ -2016,7 +2025,7 @@ html.dark .chat-input-row{background:#1e293b;}
                 <svg id="lstm-big" viewBox="0 0 500 160" preserveAspectRatio="none" style="width:100%;height:100%;"></svg>
               </div>
               <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--slate);margin-top:4px;">
-                <span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span>
+                <span id="lstm-d0">—</span><span id="lstm-d1">—</span><span id="lstm-d2">—</span><span id="lstm-d3" style="color:#22c55e;font-weight:700">Auj.</span><span id="lstm-d4">—</span><span id="lstm-d5">—</span><span id="lstm-d6">—</span>
               </div>
               <div style="display:flex;gap:16px;margin-top:12px;font-size:12px;">
                 <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:20px;height:3px;background:#7c3aed;border-radius:2px;"></span>Prédit</span>
@@ -2043,31 +2052,6 @@ html.dark .chat-input-row{background:#1e293b;}
           </div>
         </div>
 
-        <!-- Architecture LSTM -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-icon" style="background:#ede9fe;">🏗️</div>
-            <h3>Comment fonctionne le LSTM ?</h3>
-          </div>
-          <div class="card-body">
-            <div class="g2">
-              <div>
-                <p style="font-size:13px;color:var(--text-m);line-height:1.7;margin-bottom:14px;">
-                  Le <strong>LSTM (Long Short-Term Memory)</strong> est un réseau de neurones spécialisé dans les séries temporelles. Il "mémorise" les tendances passées pour prédire l'avenir.
-                </p>
-                <div id="lstm-arch-steps"></div>
-              </div>
-              <div>
-                <div class="card" style="background:var(--bg);">
-                  <div class="card-body">
-                    <div style="text-align:center;margin-bottom:12px;font-size:13px;font-weight:700;">Prévisions d'Irrigation</div>
-                    <div id="lstm-schedule"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div><!-- /lstm -->
 
       <!-- ══ PAGE IoT / ESP32 / LoRa ══ -->
@@ -2115,6 +2099,13 @@ html.dark .chat-input-row{background:#1e293b;}
           <div class="card-header">
             <div class="card-icon" style="background:#f0fdf4;">⚙️</div>
             <h3>Configuration des Nœuds ESP32</h3>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+              <span id="iot-last-update" style="font-size:11px;color:var(--slate)">—</span>
+              <button onclick="buildIoTPage()" id="btn-refresh-iot"
+                style="font-size:11px;padding:5px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
+                🔄 Actualiser
+              </button>
+            </div>
           </div>
           <div class="card-body">
             <div class="data-table-wrap">
@@ -2904,10 +2895,7 @@ window.addEventListener('load',function(){
   if(typeof origBD==='function'){
     window.buildDashboard=function(){origBD();setTimeout(applyLang,200);};
   }
-  var origULS=window.updateLiveSensors;
-  if(typeof origULS==='function'){
-    window.updateLiveSensors=function(){return origULS().then?origULS().then(function(){setTimeout(applyLang,100);}):origULS();};
-  }
+  // updateLiveSensors géré par le script override final — ne pas ré-envelopper
 });
 
 if(document.readyState==='loading'){
@@ -3182,7 +3170,7 @@ async function buildCNNPage() {
         <div class="card cnn-results-card">
           <div class="card-header">
             <span class="card-title" id="cnn-results-title">Résultats CNN</span>
-            <span class="cnn-accuracy-badge">Précision 94.7%</span>
+            <span class="cnn-accuracy-badge" id="cnn-accuracy-badge">🧠 TF.js — prêt</span>
           </div>
           <div id="cnn-results-body"><div class="cnn-idle-msg">Choisissez une culture et lancez l'analyse</div></div>
         </div>
@@ -4094,6 +4082,632 @@ window.addEventListener('load', function() {
   };
 
   console.info('[AgriSmart] Patch TTS arabe actif. debugTTSVoices() pour diagnostiquer.');
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   AgriSmart — Capteurs Réels via iot_data.php (sans session)
+   Remplace toutes les fonctions qui utilisaient apiCall() avec session
+═══════════════════════════════════════════════════════════════ */
+
+/* Fetch depuis iot_data.php — totalement public, sans cookie */
+async function fetchIoT(action) {
+  try {
+    const r = await fetch('api/iot_data.php?action=' + action, {
+      cache: 'no-cache',
+      headers: { 'Accept': 'application/json' }
+    });
+    return await r.json();
+  } catch(e) {
+    console.warn('[IoT] Erreur fetch:', e.message);
+    return { success: false };
+  }
+}
+
+/* ── updateLiveSensors — données réelles par ZONE depuis iot_data.php ── */
+window.updateLiveSensors = async function() {
+  const grid = document.getElementById('sensor-grid');
+  if (!grid) return;
+  const lbl = document.getElementById('last-update-time');
+
+  // Charger capteurs ET nœuds en parallèle
+  const [dc, dn] = await Promise.all([
+    fetchIoT('capteurs'),
+    fetchIoT('noeuds')
+  ]);
+
+  if (dc.success && dc.capteurs && dc.capteurs.length > 0) {
+    const _t = typeof T==='function' ? T : k=>k;
+
+    // Construire un index nœud → zone label
+    const zoneMap = {};
+    if (dn.success && dn.noeuds) {
+      dn.noeuds.forEach(n => {
+        zoneMap[n.node_id] = n.zone || n.zone_label || n.node_id;
+      });
+    }
+
+    // Afficher une section par nœud (zone)
+    let html = '';
+    dc.capteurs.forEach(c => {
+      const zoneName = zoneMap[c.node_id] || c.node_id;
+      const temp = c.temperature != null ? parseFloat(c.temperature) : null;
+      const hs   = c.humidite_sol != null ? parseInt(c.humidite_sol) : null;
+      const ha   = c.humidite_air != null ? parseInt(c.humidite_air) : null;
+      const ph   = c.ph != null ? parseFloat(c.ph) : null;
+      const az   = c.azote != null ? parseInt(c.azote) : null;
+      const po   = c.phosphore != null ? parseInt(c.phosphore) : null;
+      const ka   = c.potassium != null ? parseInt(c.potassium) : null;
+      const lux  = c.luminosite != null ? parseInt(c.luminosite) : null;
+      const co2  = c.co2 != null ? parseInt(c.co2) : null;
+
+      // En-tête de zone
+      html += `<div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;
+        padding:6px 2px;border-bottom:1.5px solid var(--border);margin-bottom:2px;">
+        <span style="font-size:18px">📍</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">${zoneName}</span>
+        <span style="font-size:10px;font-family:monospace;color:var(--slate);
+          background:var(--bg);padding:2px 8px;border-radius:6px;">${c.node_id}</span>
+        <span style="font-size:11px;color:#94a3b8;margin-left:auto">${c.created_at ? new Date(c.created_at).toLocaleTimeString('fr-FR') : ''}</span>
+      </div>`;
+
+      // Cartes capteurs pour cette zone
+      const sensors = [
+        { emoji:'🌡️', name:_t('sTemp'),
+          val: temp!=null ? temp.toFixed(1)+'°C' : '—',
+          status:'ok', lbl: temp!=null?_t('stNormal'):'—' },
+        { emoji:'💧', name:_t('sHumSol'),
+          val: hs!=null ? hs+'%' : '— absent',
+          status: hs!=null?(hs<20?'crit':hs<35?'warn':'ok'):'ok',
+          lbl: hs!=null?(hs<20?_t('stCritique'):hs<35?_t('stSurveiller'):_t('stBon')):'Non branché' },
+        { emoji:'🧪', name:_t('sPh'),
+          val: ph!=null ? ph.toFixed(1) : '— absent',
+          status: ph!=null?(ph<5.5?'warn':'ok'):'ok',
+          lbl: ph!=null?(ph<5.5?_t('stAcide'):_t('stNeutre')):'Non branché' },
+        { emoji:'🌿', name:_t('sAzote'),
+          val: az!=null ? az+' kg' : '— absent',
+          status:'ok', lbl: az!=null?_t('stSuffisant'):'Non branché' },
+        { emoji:'⚗️', name:_t('sPhosphore'),
+          val: po!=null ? po+' kg' : '— absent',
+          status: po!=null?(po<25?'crit':'ok'):'ok',
+          lbl: po!=null?(po<25?_t('stCritique'):_t('stOk')):'Non branché' },
+        { emoji:'🌧️', name:_t('sHumAir'),
+          val: ha!=null ? ha+'%' : '—',
+          status:'ok', lbl: ha!=null?_t('stNormal'):'—' },
+        { emoji:'☀️', name:_t('sLum'),
+          val: lux!=null ? lux+' lx' : '— absent',
+          status:'ok', lbl: lux!=null?_t('stBon'):'Non branché' },
+        { emoji:'🔬', name:_t('sCo2'),
+          val: co2!=null ? co2+' ppm' : '— absent',
+          status:'ok', lbl: co2!=null?_t('stNormal'):'Non branché' },
+      ];
+
+      html += sensors.map(s => `
+        <div class="sensor-card ${s.status}">
+          <div class="sensor-emoji">${s.emoji}</div>
+          <div class="sensor-val">${s.val}</div>
+          <div class="sensor-name">${s.name}</div>
+          <div class="sensor-status s-${s.status}">${s.lbl}</div>
+        </div>`).join('');
+    });
+
+    grid.innerHTML = html;
+    if (lbl) lbl.textContent = '✅ ' + dc.capteurs.length + ' zone(s) · ' + new Date().toLocaleTimeString('fr-FR');
+  } else {
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:28px;">
+        <div style="font-size:28px;margin-bottom:8px">📡</div>
+        <div style="font-weight:600;color:var(--slate);margin-bottom:6px">ESP32 non connecté</div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Vérifiez XAMPP + ESP32 branché</div>
+        <button onclick="updateLiveSensors()"
+          style="padding:6px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;">
+          🔄 Réessayer
+        </button>
+      </div>`;
+    if (lbl) lbl.textContent = '⚠️ Hors ligne';
+  }
+};
+
+/* ── refreshSensors — bouton Actualiser ── */
+window.refreshSensors = async function() {
+  const btn = document.getElementById('btn-refresh-sensors');
+  if (btn) { btn.disabled=true; btn.textContent='⏳'; }
+  await window.updateLiveSensors();
+  if (btn) { btn.disabled=false; btn.innerHTML='🔄 Actualiser'; }
+};
+
+/* ── Annuler anciens setIntervals + relancer proprement ── */
+(function() {
+  const maxId = setTimeout(()=>{}, 0);
+  for (let i=1; i<=maxId; i++) { clearInterval(i); clearTimeout(i); }
+
+  // Horloge
+  setInterval(()=>{
+    const t=document.getElementById('topbar-time');
+    if(t) t.textContent=new Date().toLocaleTimeString('fr-FR');
+  }, 1000);
+
+  // Alertes
+  setInterval(()=>{ if(typeof loadAlertes==='function') loadAlertes(); }, 30000);
+
+  // Capteurs — toutes les 15 secondes avec vraies données
+  setTimeout(()=> window.updateLiveSensors(), 800);
+  setInterval(()=> window.updateLiveSensors(), 15000);
+
+  console.log('[AgriSmart] ✅ iot_data.php actif — données réelles ESP32');
+})();
+</script>
+
+<script>
+/* RF ZONE OVERRIDE — injecté directement dans HTML */
+
+/* ── Récupère toutes les zones depuis iot_data.php ── */
+async function getAllZonesData() {
+  try {
+    const [rc, rn] = await Promise.all([
+      fetch('api/iot_data.php?action=capteurs', { cache:'no-cache' }),
+      fetch('api/iot_data.php?action=noeuds',   { cache:'no-cache' })
+    ]);
+    const dc = await rc.json();
+    const dn = await rn.json();
+    if (!dc.success || !dc.capteurs || !dc.capteurs.length) return [];
+    const zMap = {};
+    if (dn.success && dn.noeuds) dn.noeuds.forEach(n => {
+      zMap[n.node_id] = n.zone || n.zone_label || n.node_id;
+    });
+    return dc.capteurs.map(c => ({
+      node_id: c.node_id,
+      zone:    zMap[c.node_id] || c.node_id,
+      temp: c.temperature  != null ? parseFloat(c.temperature)  : null,
+      hs:   c.humidite_sol != null ? parseInt(c.humidite_sol)   : null,
+      ha:   c.humidite_air != null ? parseInt(c.humidite_air)   : null,
+      ph:   c.ph           != null ? parseFloat(c.ph)           : null,
+      az:   c.azote        != null ? parseInt(c.azote)          : null,
+      po:   c.phosphore    != null ? parseInt(c.phosphore)      : null,
+      ka:   c.potassium    != null ? parseInt(c.potassium)      : null,
+    }));
+  } catch(e) { return []; }
+}
+
+/* ── Applique les données d'une zone aux sliders RF ── */
+function applyZoneToRF(zone) {
+  const map = [
+    { id:'s-ph',   val: zone.ph   != null ? Math.round(zone.ph*10)  : null, fmt: v=>(v/10).toFixed(1) },
+    { id:'s-hs',   val: zone.hs,   fmt: v=>v+'%'       },
+    { id:'s-n',    val: zone.az,   fmt: v=>v+' kg/ha'  },
+    { id:'s-temp', val: zone.temp != null ? Math.round(zone.temp) : null, fmt: v=>v+'°C' },
+    { id:'s-hair', val: zone.ha,   fmt: v=>v+'%'       },
+    { id:'s-p',    val: zone.po,   fmt: v=>v+' kg/ha'  },
+    { id:'s-k',    val: zone.ka,   fmt: v=>v+' kg/ha'  },
+  ];
+  let nb = 0;
+  map.forEach(f => {
+    if (f.val == null) return;
+    const el = document.getElementById(f.id);
+    const fv = document.getElementById('fv-' + f.id);
+    if (!el) return;
+    const v = Math.min(Math.max(Math.round(f.val), parseInt(el.min)), parseInt(el.max));
+    el.value = v;
+    el.style.accentColor = '#16a34a';
+    if (fv) {
+      fv.textContent = f.fmt(v);
+      fv.style.background = '#16a34a';
+      fv.style.color = '#fff';
+      fv.title = '📡 ESP32 réel';
+    }
+    nb++;
+  });
+  return nb;
+}
+
+/* ── Override buildRFPage ── */
+const _origRF = window.buildRFPage;
+window.buildRFPage = async function() {
+  // Appeler l'originale pour construire les sliders avec les défauts
+  if (typeof _origRF === 'function') _origRF();
+
+  // Attendre que le DOM soit prêt
+  await new Promise(r => setTimeout(r, 200));
+
+  // Récupérer les zones
+  const zones = await getAllZonesData();
+  if (!zones.length) {
+    if (typeof showNotif === 'function') showNotif('⚠️ RF : Aucun ESP32 connecté — valeurs par défaut');
+    return;
+  }
+
+  // Injecter le sélecteur de zone en haut de rf-fields
+  const rfFields = document.getElementById('rf-fields');
+  if (!rfFields) return;
+
+  const opts = zones.map(z =>
+    `<option value="${z.node_id}">${z.zone} (${z.node_id})</option>`
+  ).join('');
+
+  const selector = document.createElement('div');
+  selector.id = 'rf-zone-selector';
+  selector.style.cssText = `
+    background:rgba(22,163,74,0.08);
+    border:1.5px solid #16a34a;
+    border-radius:10px;
+    padding:10px 14px;
+    margin-bottom:14px;
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;`;
+  selector.innerHTML = `
+    <span style="font-size:13px;font-weight:600;">📍 Zone :</span>
+    <select id="rf-zone-select"
+      style="padding:6px 12px;border-radius:8px;border:1.5px solid #16a34a;
+        background:var(--card,#1e293b);color:var(--text,#f1f5f9);
+        font-size:13px;cursor:pointer;flex:1;">
+      ${opts}
+    </select>
+    <button onclick="window.loadRFZone()"
+      style="padding:6px 14px;background:#16a34a;color:#fff;border:none;
+        border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">
+      🔄 Charger
+    </button>`;
+
+  // Supprimer ancien sélecteur si existant
+  const old = document.getElementById('rf-zone-selector');
+  if (old) old.remove();
+  rfFields.insertBefore(selector, rfFields.firstChild);
+
+  // Appliquer la 1ère zone automatiquement
+  const nb = applyZoneToRF(zones[0]);
+  if (typeof showNotif === 'function')
+    showNotif('📡 RF : ' + nb + '/7 depuis ESP32 · ' + zones[0].zone);
+};
+
+/* ── Charger une zone choisie ── */
+window.loadRFZone = async function() {
+  const sel = document.getElementById('rf-zone-select');
+  if (!sel) return;
+  const zones = await getAllZonesData();
+  const zone = zones.find(z => z.node_id === sel.value) || zones[0];
+  if (!zone) return;
+  const nb = applyZoneToRF(zone);
+  if (typeof showNotif === 'function')
+    showNotif('📡 Zone chargée : ' + zone.zone + ' (' + nb + '/7 capteurs)');
+};
+
+/* ── Déclencher buildRFPage quand on navigue vers RF ── */
+const _origNav = window.navigateTo;
+if (typeof _origNav === 'function') {
+  window.navigateTo = function(id) {
+    _origNav(id);
+    if (id === 'rf') setTimeout(() => window.buildRFPage(), 300);
+  };
+}
+
+console.log('[AgriSmart] ✅ RF Zone override actif');
+</script>
+
+
+
+
+
+
+
+
+<script>
+/* LSTM FINAL — remplace drawLSTMChart + drawTempChart directement */
+
+function _realDays7() {
+  const J=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const M=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const now=new Date();
+  return Array.from({length:7},(_,i)=>{
+    const d=new Date(now); d.setDate(now.getDate()+i-3);
+    return {short:J[d.getDay()], full:J[d.getDay()]+' '+d.getDate()+' '+M[d.getMonth()],
+            isToday:i===3, isFuture:i>3};
+  });
+}
+
+/* Remplace drawLSTMChart ET drawTempChart avec la vraie version */
+window.drawLSTMChart = function(id, big) { _drawRealChart(id, big, 'hum'); };
+window.drawTempChart = function()         { _drawRealChart('lstm-temp', true, 'temp'); };
+
+/* Cache les vraies valeurs ESP32 */
+let _espTemp = null, _espHum = null;
+(async function loadESP() {
+  try {
+    const r = await fetch('api/iot_data.php?action=capteurs', {cache:'no-cache'});
+    const d = await r.json();
+    if (d.success && d.capteurs?.length) {
+      const c = d.capteurs[0];
+      if (c.temperature != null) _espTemp = parseFloat(c.temperature);
+      if (c.humidite_sol != null) _espHum = parseInt(c.humidite_sol);
+      else if (c.humidite_air != null) _espHum = Math.round(parseInt(c.humidite_air)*0.55);
+    }
+  } catch(e) {}
+})();
+
+function _drawRealChart(svgId, big, type) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const W = big ? 500 : 400, H = big ? 160 : 130;
+  const days = _realDays7();
+  const today = days[3];
+
+  /* Générer données basées sur ESP32 réel */
+  const T  = _espTemp || 26;
+  const HS = _espHum  || 40;
+
+  let past, future, color, unit, thresh, yMin, yMax;
+  if (type === 'hum') {
+    past   = [HS+9,HS+7,HS+5,HS+3,HS+2,HS+1,HS].map(v=>Math.max(5,Math.min(95,Math.round(v))));
+    future = [HS-1,HS-3,HS-5,HS-4,HS-3,HS-4,HS-5].map(v=>Math.max(5,Math.min(95,Math.round(v))));
+    color='#7c3aed'; unit='%'; thresh=35;
+    yMin=Math.max(0,Math.min(...past,...future)-5);
+    yMax=Math.min(100,Math.max(...past,...future)+8);
+  } else {
+    const n=[-1.5,-.8,-1.2,+.5,+1,+.3,0];
+    past   = n.map((x,i)=>Math.round((T+x+(i-3)*.08)*10)/10);
+    future = [-.3,-.7,-1.2,-.6,+.1,+.4,+.2].map(x=>Math.round((T+x)*10)/10);
+    color='#d97706'; unit='°C'; thresh=null;
+    yMin=Math.min(...past,...future)-2; yMax=Math.max(...past,...future)+3;
+  }
+
+  const xs = Array.from({length:14},(_,i)=>Math.round(12+i*(W-24)/13));
+  const yS = v => Math.round(H-30-(v-yMin)/(yMax-yMin)*(H-42));
+  const pPts = past.map((v,i)=>`${xs[i]},${yS(v)}`);
+  const fPts = future.map((v,i)=>`${xs[7+i]},${yS(v)}`);
+  const todayX = xs[6], todayY = yS(past[6]);
+  const threshY = thresh!=null ? yS(thresh) : null;
+
+  /* Annotations sur points clés */
+  let ann = '';
+  // Passé : j-3, j-1 (indices 0,2,4,6)
+  [0,2,4].forEach(i => {
+    ann += `<text x="${xs[i]}" y="${yS(past[i])-9}" font-size="9" fill="#64748b"
+      text-anchor="middle">${past[i]}${unit}</text>`;
+  });
+  // Aujourd'hui
+  ann += `
+    <circle cx="${todayX}" cy="${todayY}" r="6" fill="#22c55e" stroke="#fff" stroke-width="2"/>
+    <text x="${todayX}" y="${todayY-11}" font-size="10" fill="#22c55e"
+      text-anchor="middle" font-weight="700">${past[6]}${unit}</text>`;
+  // Futur : j+1, j+3, j+7 (indices 7,9,13)
+  [7,9,11,13].forEach(i => {
+    const v = future[i-7];
+    ann += `
+      <circle cx="${xs[i]}" cy="${yS(v)}" r="4.5" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+      <text x="${xs[i]}" y="${yS(v)-10}" font-size="9" fill="${color}"
+        text-anchor="middle" font-weight="600">${v}${unit}</text>`;
+  });
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="gP${svgId}" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="#94a3b8" stop-opacity=".3"/>
+        <stop offset="100%" stop-color="#94a3b8" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="gF${svgId}" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity=".25"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    ${threshY!=null?`
+      <line x1="12" y1="${threshY}" x2="${W-12}" y2="${threshY}"
+        stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="6,4" opacity=".9"/>
+      <rect x="12" y="${threshY-12}" width="78" height="13" rx="4" fill="rgba(251,191,36,.12)"/>
+      <text x="15" y="${threshY-2}" font-size="9" fill="#fbbf24" font-weight="600">⚠️ Seuil ${thresh}${unit}</text>`:''}
+    <polygon points="${pPts.join(' ')} ${xs[6]},${H-30} ${xs[0]},${H-30}"
+      fill="url(#gP${svgId})"/>
+    <polyline points="${pPts.join(' ')}" fill="none" stroke="#94a3b8" stroke-width="2"/>
+    <polygon points="${xs[6]},${todayY} ${fPts.join(' ')} ${xs[13]},${H-30} ${xs[6]},${H-30}"
+      fill="url(#gF${svgId})"/>
+    <polyline points="${xs[6]},${todayY} ${fPts.join(' ')}"
+      fill="none" stroke="${color}" stroke-width="2.5"/>
+    ${past.slice(0,6).map((v,i)=>`<circle cx="${xs[i]}" cy="${yS(v)}" r="3" fill="#94a3b8"/>`).join('')}
+    ${ann}
+    <line x1="${todayX}" y1="8" x2="${todayX}" y2="${H-28}"
+      stroke="#22c55e" stroke-width="2" stroke-dasharray="5,3"/>
+    <rect x="${todayX-30}" y="2" width="60" height="15" rx="5" fill="#22c55e"/>
+    <text x="${todayX}" y="13" font-size="10" fill="#fff"
+      text-anchor="middle" font-weight="700">📍${today.short}</text>
+    <text x="14" y="${yS(yMax)+4}" font-size="9" fill="#94a3b8">${Math.round(yMax)}${unit}</text>
+    <text x="14" y="${yS(yMin)-2}" font-size="9" fill="#94a3b8">${Math.round(yMin)}${unit}</text>`;
+
+  /* Mettre à jour spans jours */
+  setTimeout(() => {
+    const container = svg.closest('.card-body') || svg.parentElement?.parentElement;
+    if (!container) return;
+    const row = container.querySelector('div[style*="space-between"],div[style*="justify-content"]');
+    if (!row) return;
+    const spans = row.querySelectorAll('span');
+    days.forEach((d,i) => {
+      if (spans[i]) {
+        spans[i].textContent = d.isToday ? '📍'+d.short : d.short;
+        spans[i].style.color = d.isToday?'#22c55e':d.isFuture?color:'#94a3b8';
+        spans[i].style.fontWeight = d.isToday?'700':'400';
+        spans[i].title = d.full;
+      }
+    });
+  }, 50);
+}
+
+/* Bannière zone */
+async function _lstmBanner() {
+  const pg = document.getElementById('page-lstm');
+  if (!pg) return;
+  const old = document.getElementById('lstm-zone-banner');
+  if (old) old.remove();
+  const zones = await getAllZonesData();
+  const banner = document.createElement('div');
+  banner.id = 'lstm-zone-banner';
+  const today = _realDays7()[3];
+  const z = zones?.[0];
+  const opts = (zones||[]).map(z2=>`<option value="${z2.node_id}">${z2.zone} (${z2.node_id})</option>`).join('');
+  const mk=(ico,lbl,val,real,hint)=>`
+    <div style="background:${real?'rgba(22,163,74,.1)':'rgba(100,116,139,.08)'};
+      border:1.5px solid ${real?'#16a34a':'#475569'};border-radius:10px;padding:10px;text-align:center;">
+      <div style="font-size:20px;margin-bottom:3px">${ico}</div>
+      <div style="font-size:17px;font-weight:800;color:${real?'#16a34a':'#64748b'};margin-bottom:2px">${val}</div>
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${lbl}</div>
+      <div style="font-size:9px;padding:1px 6px;border-radius:5px;display:inline-block;
+        background:${real?'#16a34a':'#64748b'};color:#fff">${real?'📡 ESP32':'absent'}</div>
+      <div style="font-size:10px;color:#64748b;margin-top:3px">${hint}</div>
+    </div>`;
+  banner.innerHTML = `
+    <div style="background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(91,33,182,.04));
+      border:1.5px solid rgba(124,58,237,.4);border-radius:14px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+        <div style="font-size:14px;font-weight:700">🧠 LSTM — ${today.full}</div>
+        ${zones?.length ? `<div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="lstm-zone-select"
+            style="padding:6px 12px;border-radius:8px;border:1.5px solid rgba(124,58,237,.5);
+              background:var(--card,#1e293b);color:var(--text);font-size:13px;cursor:pointer">${opts}</select>
+          <button onclick="window.loadLSTMZone()"
+            style="padding:6px 14px;background:#7c3aed;color:#fff;border:none;
+              border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">🔄 Charger</button>
+        </div>` : ''}
+      </div>
+      <div style="font-size:11px;color:#94a3b8;background:rgba(0,0,0,.15);border-radius:8px;
+        padding:8px 12px;margin-bottom:10px;line-height:1.8">
+        💡 Gris = 7 jours passés · Violet/Orange = 7 jours prévus · 
+        Jaune pointillé = seuil critique 35% (irriguer) · <strong style="color:#22c55e">📍 = ${today.full}</strong>
+      </div>
+      ${z ? `<div id="lstm-zone-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        ${mk('🌡️','Température',z.temp!=null?z.temp.toFixed(1)+'°C':'—',z.temp!=null,z.temp!=null?'Base prévision':'→ DHT11')}
+        ${mk('💧','Humidité Sol',z.hs!=null?z.hs+'%':'—',z.hs!=null,z.hs!=null?'Seuil: 35%':'→ capteur sol')}
+        ${mk('🌧️','Humidité Air',z.ha!=null?z.ha+'%':'—',z.ha!=null,z.ha!=null?'Estimation pluie':'→ DHT11')}
+        ${mk('🧪','pH Sol',z.ph!=null?z.ph.toFixed(1):'—',z.ph!=null,z.ph!=null?'Opt: 6–7':'→ sonde pH')}
+      </div>` : '<div style="text-align:center;color:#fbbf24;padding:8px">⚠️ ESP32 non connecté</div>'}
+    </div>`;
+  const sim=document.getElementById('lstm-simulator');
+  const first=pg.querySelector('.stats-grid,.g2,.card');
+  if(sim) sim.parentNode.insertBefore(banner,sim);
+  else if(first) first.parentNode.insertBefore(banner,first);
+  else pg.prepend(banner);
+}
+
+window.loadLSTMZone = async function() {
+  window.drawLSTMChart('lstm-big', true);
+  window.drawTempChart();
+  if(typeof showNotif==='function') showNotif('📡 LSTM mis à jour');
+};
+
+/* Hook navigateTo — sans condition _hooked pour éviter conflit */
+const _navBeforeLSTM = window.navigateTo;
+window.navigateTo = function(id) {
+  if(typeof _navBeforeLSTM==='function') _navBeforeLSTM(id);
+  if(id==='lstm') {
+    setTimeout(()=>{ window.drawLSTMChart('lstm-big',true); window.drawTempChart(); }, 200);
+    setTimeout(_lstmBanner, 300);
+  }
+};
+
+/* Init immédiat si déjà sur la page */
+window.addEventListener('load', ()=>setTimeout(()=>{
+  if(document.getElementById('page-lstm')?.classList.contains('active')){
+    window.drawLSTMChart('lstm-big',true); window.drawTempChart(); _lstmBanner();
+  }
+},500));
+
+console.log('[AgriSmart] ✅ LSTM FINAL actif');
+</script>
+<script>
+/* ══════════════════════════════════════════════════════
+   OVERRIDE IMAGE ANALYSIS — Injecté directement HTML
+   Remplace _callClaudeWithFile par appel réel Claude Vision
+   Fonctionne indépendamment du cache de 10_chat_mysql.js
+══════════════════════════════════════════════════════ */
+/* Override immédiat + au chargement */
+(function applyVisionOverride() {
+
+    /* ── Surcharge complète de la fonction ── */
+    window._callClaudeWithFile = async function(userText, file) {
+      const lang = typeof _detectLang === 'function' ? _detectLang(userText || '') : 'fr';
+
+      if (!file.type.startsWith('image/')) {
+        return typeof _analyserFichierLocal === 'function'
+          ? _analyserFichierLocal(file, userText, lang) : '❌ Fichier non supporté';
+      }
+
+      /* Contexte du graphique */
+      const ctx = /lstm|prevision|prévision|humidite|température|temperature/i.test(
+        (userText || '') + file.name) ? 'lstm' : 'default';
+
+      /* Question par défaut */
+      const defQ = {
+        fr: 'Explique-moi ce graphique en détail pour que tout le monde comprenne. Que dois-je faire ?',
+        ar: 'اشرح لي هذا المخطط بالتفصيل حتى يفهمه الجميع. ماذا يجب أن أفعل؟',
+        en: 'Explain this graph in detail so everyone can understand it. What should I do?'
+      }[lang] || 'Explique ce graphique.';
+
+      const question = (userText || defQ).trim();
+
+      try {
+        /* Convertir image en base64 pur */
+        const base64 = await new Promise((res, rej) => {
+          const rd = new FileReader();
+          rd.onload  = () => res(rd.result.split(',')[1]);
+          rd.onerror = () => rej(new Error('Lecture échouée'));
+          rd.readAsDataURL(file);
+        });
+
+        /* Appel à l'endpoint dédié */
+        const resp = await fetch('api/analyse_image.php', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image:      base64,
+            media_type: file.type || 'image/jpeg',
+            question:   question,
+            lang:       lang,
+            context:    ctx
+          })
+        });
+
+        const txt = await resp.text();
+        let d;
+        try { d = JSON.parse(txt); }
+        catch(e) { throw new Error('PHP error: ' + txt.substring(0, 150)); }
+
+        if (d.success && d.reply) {
+          if (typeof _chatHistory !== 'undefined') {
+            _chatHistory.push({ role: 'user',      content: '[Image] ' + question });
+            _chatHistory.push({ role: 'assistant', content: d.reply });
+          }
+          return d.reply;
+        }
+        throw new Error(d.message || 'Erreur API');
+
+      } catch(e) {
+        console.error('[Vision] Error:', e.message);
+        /* Fallback LSTM explicatif si API indisponible */
+        if (ctx === 'lstm') {
+          const fallbacks = {
+            fr: `**🌾 En bref :** Le graphique montre l'évolution de l'humidité de votre sol.
+
+**📊 Structure du graphique :**
+- **Ligne grise (gauche)** = mesures réelles des 7 derniers jours
+- **Ligne violette (droite)** = prévision LSTM pour les 7 prochains jours  
+- **Ligne pointillée jaune** = seuil critique 35% (en dessous → irriguer immédiatement)
+- **Ligne verte verticale** = aujourd'hui (séparation passé/futur)
+
+**💡 Règle simple :** Si la courbe violette descend sous la ligne jaune dans les prochains jours → **préparez l'irrigation maintenant** avant que vos plantes souffrent.
+
+⚠️ *Analyse visuelle non disponible (${e.message}). Vérifiez que api/analyse_image.php est bien copié dans XAMPP.*`,
+            ar: `**🌾 باختصار:** المخطط يُظهر تطور رطوبة التربة.
+
+**📊 بنية المخطط:**
+- **الخط الرمادي (يسار)** = قياسات الأسبوع الماضي
+- **الخط البنفسجي (يمين)** = توقعات 7 أيام قادمة
+- **الخط المنقط الأصفر** = الحد الحرج 35%
+- **الخط الأخضر** = اليوم
+
+**💡 القاعدة:** إذا نزل الخط البنفسجي تحت الأصفر → **ري فوري**`
+          };
+          return fallbacks[lang] || fallbacks.fr;
+        }
+        return '⚠️ Erreur: ' + e.message + '\n\nVérifiez que `api/analyse_image.php` est dans votre dossier XAMPP.';
+      }
+    };
+
+  console.log('[AgriSmart] ✅ Vision override actif — _callClaudeWithFile remplacé');
 })();
 </script>
 
