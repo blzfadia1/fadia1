@@ -10,25 +10,44 @@
    IoT PAGE
 ═══════════════════════════════════════════════════════ */
 async function buildIoTPage() {
+  // Bouton refresh
+  const btnIoT = document.getElementById('btn-refresh-iot');
+  if (btnIoT) { btnIoT.disabled = true; btnIoT.textContent = '⏳'; }
+
   // Charger les noeuds depuis MySQL
-  const d = await apiCall('noeuds');
+  // iot_data.php — public endpoint
+  let d;
+  try {
+    const r = await fetch('api/iot_data.php?action=noeuds', { cache:'no-cache' });
+    d = await r.json();
+  } catch(e) { d = { success: false }; }
   let nodes = [];
-  if (d.success && d.noeuds.length > 0) {
+  if (d.success && d.noeuds && d.noeuds.length > 0) {
+    // Filtrer : afficher seulement les nœuds qui ont envoyé des données (pas les fictifs)
     nodes = d.noeuds.map(n=>({
-      id: n.node_id, zone: n.zone, rssi: n.rssi,
-      bat: n.batterie+'%', sf: n.sf, status: n.statut, dbId: n.id
+      id:       n.node_id,
+      zone:     n.zone || '—',
+      rssi:     n.rssi || 'WiFi',
+      bat:      n.batterie+'%',
+      sf:       n.sf || 'WiFi',
+      status:   n.statut,
+      detail:   n.statut_detail || '',
+      dbId:     n.id,
+      secondes: n.secondes_depuis || 0,
+      last_seen:n.last_seen_label || n.last_seen || ''
     }));
   } else {
-    // Fallback
+    // Fallback — montrer ESP32-DHT11 en attente
     nodes = [
-      { id:'ESP32-01', zone:'Zone A — Nord',   rssi:'-88 dBm', bat:'87%', sf:'SF7',  status:'online' },
-      { id:'ESP32-02', zone:'Zone B — Centre', rssi:'-94 dBm', bat:'12%', sf:'SF9',  status:'warn'   },
-      { id:'ESP32-03', zone:'Zone C — Sud',    rssi:'-91 dBm', bat:'72%', sf:'SF8',  status:'online' },
-      { id:'ESP32-04', zone:'Zone D — Est',    rssi:'-89 dBm', bat:'55%', sf:'SF7',  status:'online' },
-      { id:'ESP32-05', zone:'Zone E — Ouest',  rssi:'-96 dBm', bat:'43%', sf:'SF10', status:'online' },
-      { id:'ESP32-06', zone:'Zone F — Serre',  rssi:'-85 dBm', bat:'91%', sf:'SF7',  status:'online' },
+      { id:'ESP32-DHT11', zone:'Mon champ — Nord', rssi:'WiFi', bat:'100%', sf:'WiFi', status:'offline', dbId: null },
     ];
   }
+
+  // Re-activer bouton
+  if (btnIoT) { btnIoT.disabled = false; btnIoT.innerHTML = '🔄 Actualiser'; }
+  const iotLbl = document.getElementById('iot-last-update');
+  const onlineCount = nodes.filter(n=>n.status==='online').length;
+  if (iotLbl) iotLbl.textContent = `✅ ${new Date().toLocaleTimeString('fr-FR')} · ${onlineCount}/${nodes.length} en ligne`;
 
   document.getElementById('node-list').innerHTML = nodes.slice(0,3).map(n=>`
     <div class="device-row">
@@ -62,8 +81,24 @@ async function buildIoTPage() {
       <td style="font-family:'JetBrains Mono',monospace;">${n.rssi}</td>
       <td><span class="badge bg-blue">${n.sf}</span></td>
       <td><span style="font-weight:700;color:${parseInt(n.bat)<20?'var(--red)':'var(--green)'}">${n.bat}</span></td>
-      <td><span class="badge ${n.status==='online'?'bg-green':n.status==='warn'?'bg-amber':'bg-red'}">${n.status==='online'?'✓ En ligne':n.status==='warn'?'⚠ Batterie':'✗ Hors ligne'}</span></td>
-      <td>${n.dbId ? `<button onclick="saveCapteursManuel('${n.id}')" style="font-size:11px;padding:3px 8px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:6px;cursor:pointer;">💾 Mesure</button>` : ''}</td>
+      <td>
+        ${(()=>{
+          const detail = n.detail || '';
+          const sec = parseInt(n.secondes || 0);
+          const ago = sec < 60 ? sec+'s' : Math.floor(sec/60)+'min';
+          if (n.status === 'online') {
+            return '<span class="badge bg-green" title="Dernière mesure il y a '+ago+'">✓ En ligne · '+ago+'</span>';
+          } else if (n.status === 'warn') {
+            return '<span class="badge bg-amber">⚠️ '+detail+'</span>';
+          } else {
+            return '<span class="badge bg-red" title="'+detail+'">✗ '+detail+'</span>';
+          }
+        })()}
+      </td>
+      <td>
+        <button onclick="buildIoTPage()" style="font-size:11px;padding:3px 8px;background:#e0f2fe;color:#0284c7;border:1px solid #bae6fd;border-radius:6px;cursor:pointer;margin-right:3px;">🔄</button>
+        ${n.dbId ? `<button onclick="saveCapteursManuel('${n.id}')" style="font-size:11px;padding:3px 8px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:6px;cursor:pointer;">💾 Mesure</button>` : ''}
+      </td>
     </tr>`).join('')+'</tbody>';
   document.getElementById('esp-table').innerHTML = thead+tbody;
 }
@@ -100,40 +135,115 @@ async function saveCapteursManuel(nodeId) {
    HISTORY PAGE — données depuis MySQL
 ═══════════════════════════════════════════════════════ */
 async function buildHistoryPage() {
-  // Tableau historique depuis MySQL
   const t = document.getElementById('hist-table');
-  t.innerHTML = '<thead><tr><th>Date & Heure</th><th>Capteur</th><th>pH</th><th>Humidité</th><th>Temp.</th><th>Action</th></tr></thead><tbody><tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">⏳ Chargement depuis MySQL...</td></tr></tbody>';
+  if (!t) return;
+
+  // Header avec bouton actualiser
+  const headerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <span style="font-size:13px;font-weight:600;color:var(--text)">📜 Mesures réelles ESP32 depuis MySQL</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="hist-last-update" style="font-size:11px;color:var(--slate)">—</span>
+        <button onclick="buildHistoryPage()" id="btn-refresh-hist"
+          style="font-size:11px;padding:5px 14px;background:var(--violet);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
+          🔄 Actualiser
+        </button>
+      </div>
+    </div>`;
+
+  // Insérer header avant le tableau
+  const histContainer = t.parentElement;
+  let histHeader = document.getElementById('hist-header');
+  if (!histHeader) {
+    histHeader = document.createElement('div');
+    histHeader.id = 'hist-header';
+    histContainer.insertBefore(histHeader, t);
+  }
+  histHeader.innerHTML = headerHTML;
+
+  t.innerHTML = `<thead><tr>
+    <th>Date & Heure</th><th>Nœud</th>
+    <th>🌡️ Temp.</th><th>💧 H.Air</th><th>💧 H.Sol</th>
+    <th>🧪 pH</th><th>🌿 N</th><th>⚗️ P</th><th>🔬 K</th>
+    <th>Statut</th>
+  </tr></thead>
+  <tbody><tr><td colspan="10" style="text-align:center;padding:20px;color:#94a3b8;">⏳ Chargement depuis MySQL...</td></tr></tbody>`;
 
   const d = await apiCall('historique');
-  if (d.success && d.historique.length > 0) {
-    const actionClass = {Aucune:'bg-green', Irrigation:'bg-blue', 'Alerte pH':'bg-red', Fertilisation:'bg-amber'};
-    t.innerHTML = `
-      <thead><tr><th>Date & Heure</th><th>Capteur</th><th>pH</th><th>Humidité</th><th>Temp.</th><th>Action</th></tr></thead>
-      <tbody>${d.historique.map(r=>`<tr>
-        <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${r.time_label}</td>
-        <td><span class="badge bg-blue">${r.node_id}</span></td>
-        <td>${r.ph ?? '—'}</td>
-        <td>${r.humidite ? r.humidite+'%' : '—'}</td>
-        <td>${r.temperature ? r.temperature+'°C' : '—'}</td>
-        <td><span class="badge ${actionClass[r.action]||'bg-green'}">${r.action}</span></td>
-      </tr>`).join('')}</tbody>`;
+
+  if (d.success && d.historique && d.historique.length > 0) {
+    const rows = d.historique.map(r => {
+      // Couleur statut
+      let statusColor = 'bg-green', statusText = '✓ Normal';
+      if (r.action && r.action !== 'Normal') {
+        statusColor = r.action.includes('acide')||r.action.includes('Sec')||r.action.includes('Chaleur') ? 'bg-red' : 'bg-amber';
+        statusText = r.action;
+      }
+      return `<tr>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap;">${r.time_label}</td>
+        <td><span class="badge bg-blue" style="font-size:10px;">${r.node_id}</span></td>
+        <td style="font-weight:600;color:${r.temperature!=null?'var(--amber)':'var(--slate)'}">
+          ${r.temperature!=null ? r.temperature.toFixed(1)+'°C' : '—'}
+        </td>
+        <td style="color:${r.humidite_air!=null?'var(--blue)':'var(--slate)'}">
+          ${r.humidite_air!=null ? r.humidite_air+'%' : '—'}
+        </td>
+        <td style="color:${r.humidite_sol!=null?(r.humidite_sol<20?'var(--red)':r.humidite_sol<35?'var(--amber)':'var(--green)'):'var(--slate)'}">
+          ${r.humidite_sol!=null ? r.humidite_sol+'%' : '—'}
+        </td>
+        <td style="color:${r.ph!=null?(r.ph<5.5?'var(--red)':r.ph>7.5?'var(--amber)':'var(--green)'):'var(--slate)'}">
+          ${r.ph!=null ? r.ph.toFixed(1) : '—'}
+        </td>
+        <td style="color:var(--slate)">${r.azote!=null ? r.azote+' kg' : '—'}</td>
+        <td style="color:var(--slate)">${r.phosphore!=null ? r.phosphore+' kg' : '—'}</td>
+        <td style="color:var(--slate)">${r.potassium!=null ? r.potassium+' kg' : '—'}</td>
+        <td><span class="badge ${statusColor}" style="font-size:10px;">${statusText}</span></td>
+      </tr>`;
+    }).join('');
+
+    t.innerHTML = `<thead><tr>
+      <th>Date & Heure</th><th>Nœud</th>
+      <th>🌡️ Temp.</th><th>💧 H.Air</th><th>💧 H.Sol</th>
+      <th>🧪 pH</th><th>🌿 N</th><th>⚗️ P</th><th>🔬 K</th>
+      <th>Statut</th>
+    </tr></thead><tbody>${rows}</tbody>`;
+
+    const lbl = document.getElementById('hist-last-update');
+    if (lbl) lbl.textContent = '✅ ' + d.historique.length + ' mesures · ' + new Date().toLocaleTimeString('fr-FR');
   } else {
-    t.innerHTML = '<thead><tr><th>Date & Heure</th><th>Capteur</th><th>pH</th><th>Humidité</th><th>Temp.</th><th>Action</th></tr></thead><tbody><tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">Aucune donnée</td></tr></tbody>';
+    t.innerHTML = `<thead><tr>
+      <th>Date & Heure</th><th>Nœud</th>
+      <th>🌡️ Temp.</th><th>💧 H.Air</th><th>💧 H.Sol</th>
+      <th>🧪 pH</th><th>🌿 N</th><th>⚗️ P</th><th>🔬 K</th>
+      <th>Statut</th>
+    </tr></thead>
+    <tbody><tr><td colspan="10" style="text-align:center;padding:30px;color:#94a3b8;">
+      <div style="font-size:24px;margin-bottom:8px">📭</div>
+      <div>Aucune mesure ESP32 — vérifiez que l'ESP32 est connecté et envoie des données</div>
+    </td></tr></tbody>`;
   }
 
-  // Timeline depuis MySQL
-  const tl = await apiCall('timeline');
+  // Timeline — construite depuis les mesures réelles
   const tlEl = document.getElementById('timeline');
-  if (tl.success && tl.timeline.length > 0) {
-    tlEl.innerHTML = tl.timeline.map((x,i)=>`
-      <div class="tl-item" style="animation-delay:${i*.08}s">
-        <div class="tl-dot" style="background:${x.couleur_bg}">${x.icone}</div>
+  if (tlEl && d.success && d.historique && d.historique.length > 0) {
+    // Prendre les 10 dernières mesures pour la timeline
+    const recent = d.historique.slice(0, 10);
+    tlEl.innerHTML = recent.map((r, i) => {
+      const ico  = r.action && r.action !== 'Normal' ? '⚠️' : '📡';
+      const bg   = r.action && r.action !== 'Normal' ? '#fee2e2' : '#e0f2fe';
+      const info = [
+        r.temperature != null ? r.temperature.toFixed(1)+'°C' : null,
+        r.humidite_air != null ? r.humidite_air+'% air' : null,
+      ].filter(Boolean).join(' · ') || 'Mesure enregistrée';
+      return `<div class="tl-item" style="animation-delay:${i*.06}s">
+        <div class="tl-dot" style="background:${bg}">${ico}</div>
         <div class="tl-body">
-          <div class="tl-title">${x.titre}</div>
-          <div class="tl-sub">${x.sous_titre||''}</div>
-          <div class="tl-time">${x.time_label}</div>
+          <div class="tl-title">${r.node_id} — ${info}</div>
+          <div class="tl-sub">${r.action !== 'Normal' ? r.action : 'Données reçues'}</div>
+          <div class="tl-time">${r.time_label}</div>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 }
 

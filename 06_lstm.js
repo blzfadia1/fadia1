@@ -23,6 +23,30 @@ function lstmInfer(temp,pluie,hum,rad,vent){
 }
 
 /* ══ PAGE LSTM ══════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════
+   AUTO-FILL DEPUIS ESP32 — récupère données réelles
+═══════════════════════════════════════════════════════ */
+async function getSensorData() {
+  // iot_data.php — endpoint public sans session
+  let d;
+  try {
+    const r = await fetch('api/iot_data.php?action=capteurs', { cache:'no-cache' });
+    d = await r.json();
+  } catch(e) { return null; }
+  if (!d || !d.success || !d.capteurs || d.capteurs.length === 0) return null;
+  const avg = (key) => {
+    const vals = d.capteurs.map(c => c[key])
+      .filter(v => v !== null && v !== undefined && !isNaN(parseFloat(v)));
+    const nums = vals.map(v => parseFloat(v)).filter(v => !isNaN(v));
+    return nums.length ? nums.reduce((a,b) => a+b, 0) / nums.length : null;
+  };
+  return {
+    temp: avg('temperature'), hs: avg('humidite_sol'), ha: avg('humidite_air'),
+    ph: avg('ph'), az: avg('azote'), po: avg('phosphore'), ka: avg('potassium'),
+  };
+}
+
 function buildLSTMPage(){
   const el=document.getElementById('page-lstm');
   if(!el)return;
@@ -164,7 +188,38 @@ function buildLSTMPage(){
   onLSTMSlider();
   _lstmArch();
   _lstmSchedule();
+  // Auto-fill depuis capteurs ESP32
+  autoFillLSTMFromSensors();
 }
+
+async function autoFillLSTMFromSensors() {
+  const s = await getSensorData();
+  if (!s) return;
+
+  const setSlider = (id, valId, val, unit) => {
+    if (val === null || val === undefined) return;
+    const el = document.getElementById(id);
+    const vl = document.getElementById(valId);
+    if (!el) return;
+    const mn = parseInt(el.min), mx = parseInt(el.max);
+    const clamped = Math.min(Math.max(Math.round(val), mn), mx);
+    el.value = clamped;
+    if (vl) vl.textContent = clamped + ' ' + unit;
+  };
+
+  if (s.temp != null) setSlider('lr-temp', 'lv-temp', s.temp, '°C');
+  if (s.hs   != null) setSlider('lr-hum',  'lv-hum',  s.hs,   '%');
+  if (s.ha   != null) {
+    // Humidité air élevée → estimation précipitations
+    const rain = Math.max(0, Math.min(40, Math.round((s.ha - 30) * 0.5)));
+    setSlider('lr-pluie', 'lv-pluie', rain, 'mm');
+  }
+  onLSTMSlider(); // recalculer les portes LSTM avec les nouvelles valeurs
+
+  const nb = [s.temp, s.hs, s.ha].filter(v => v !== null).length;
+  if (nb > 0) showNotif('📡 LSTM : ' + nb + ' valeur(s) ESP32 chargée(s)');
+}
+
 
 function _lstmField(rid,vid,nid,nvid,label,mn,mx,def,unit,col){
   return `<div class="lstm-f">

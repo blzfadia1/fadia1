@@ -130,50 +130,118 @@ async function _callClaude(userMessage) {
 async function _callClaudeWithFile(userText, file) {
   const lang    = _detectLang(userText || '');
   const isImage = file.type.startsWith('image/');
+  const userName = CURRENT_USER
+    ? ((CURRENT_USER.prenom||'') + ' ' + (CURRENT_USER.nom||'')).trim() : '';
 
-  // Essayer d'envoyer via le proxy PHP avec le fichier en base64
+  if (!isImage) {
+    return _analyserFichierLocal(file, userText, lang);
+  }
+
+  // Détecter le contexte du graphique
+  const txt = (userText || '') + ' ' + file.name;
+  const context = /lstm|prevision|prévision|humidite|humidité|temperature|température/i.test(txt)
+    ? 'lstm' : 'default';
+
+  // Question par défaut selon la langue
+  const defaultQ = {
+    fr: 'Explique-moi ce graphique en détail pour que tout le monde comprenne. Que dois-je faire ?',
+    ar: 'اشرح لي هذا المخطط بالتفصيل حتى يفهمه الجميع. ماذا يجب أن أفعل؟',
+    en: 'Explain this graph in detail so everyone can understand. What should I do?'
+  }[lang] || 'Explique ce graphique.';
+
+  const question = (userText || defaultQ).trim();
+
+  // Afficher animation chargement
+  const tyBubble = document.querySelector('.typing-bubble');
+  if (tyBubble) tyBubble.innerHTML = '🧠 Analyse visuelle en cours…';
+
   try {
-    const base64 = await _fileToBase64(file);
-    const userName = CURRENT_USER
-      ? ((CURRENT_USER.prenom || '') + ' ' + (CURRENT_USER.nom || '')).trim()
-      : '';
+    // Convertir image en base64 (sans le préfixe data:...)
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload  = () => res(r.result.split(',')[1]); // Uniquement les données après la virgule
+      r.onerror = () => rej(new Error('Lecture image échouée'));
+      r.readAsDataURL(file);
+    });
 
-    const question = (userText || (
-      lang === 'ar' ? 'حلل هذا المحتوى الزراعي.' :
-      lang === 'en' ? 'Analyze this agricultural content.' :
-      'Analyse ce contenu agricole.'
-    )).trim();
+    const mediaType = file.type || 'image/jpeg';
 
-    // Construire le message avec fichier
-    const msgContent = isImage
-      ? `[Image: ${file.name}] ${question}\n\nNote: Analyse cette image agricole et donne des conseils pratiques basés sur ce que tu vois.`
-      : `[Fichier: ${file.name}] ${question}`;
-
-    const r = await fetch('api/chat.php', {
+    // Appel au nouvel endpoint dédié (propre, sans conflit de session)
+    const resp = await fetch('api/analyse_image.php', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages:  [
-          ..._chatHistory.slice(-6),
-          { role: 'user', content: msgContent }
-        ],
-        lang:      _chatLang,
-        role:      (typeof state !== 'undefined') ? state.role : 'admin',
-        user_name: userName,
-      }),
+        image:      base64,
+        media_type: mediaType,
+        question:   question,
+        lang:       lang,
+        context:    context,
+      })
     });
 
-    const d = await r.json();
+    if (!resp.ok) {
+      throw new Error('Serveur HTTP ' + resp.status);
+    }
+
+    const rawText = await resp.text();
+    let d;
+    try {
+      d = JSON.parse(rawText);
+    } catch(pe) {
+      console.error('[AgroBot] Réponse non-JSON:', rawText.substring(0, 200));
+      throw new Error('Réponse PHP invalide');
+    }
+
     if (d.success && d.reply) {
-      _chatHistory.push({ role: 'user',      content: msgContent });
+      const summaryText = '[Image: ' + file.name + '] ' + question;
+      _chatHistory.push({ role: 'user',      content: summaryText });
       _chatHistory.push({ role: 'assistant', content: d.reply });
       return d.reply;
     }
-  } catch(e) {
-    console.warn('[AgroBot] File upload error:', e.message);
-  }
 
-  return _analyserFichierLocal(file, userText, lang);
+    throw new Error(d.message || 'Erreur API');
+
+  } catch(e) {
+    console.error('[AgroBot] Image analysis error:', e.message);
+    // Fallback LSTM local si API indisponible
+    if (context === 'lstm') return _expliqueLSTMLocal(lang);
+    return lang === 'ar'
+      ? '⚠️ خطأ: ' + e.message
+      : '⚠️ Erreur analyse image: ' + e.message;
+  }
+}
+
+/* ── Explication LSTM locale (si API indisponible) ── */
+function _expliqueLSTMLocal(lang) {
+  if (lang === 'ar') return `**🌾 تفسير مخطط LSTM**
+
+📊 **ما يُظهره المخطط:**
+- **الخط الرمادي** = قياسات الأيام السابقة (ما حدث فعلاً)
+- **الخط البنفسجي/البرتقالي** = توقعات الـ 7 أيام القادمة
+- **الخط المنقط الأصفر** = الحد الحرج (35% رطوبة التربة)
+- **الخط الأخضر** = اليوم
+
+💡 **ماذا يعني ذلك؟** إذا انخفض الخط البنفسجي تحت الخط الأصفر → يجب الري فوراً.`;
+
+  if (lang === 'en') return `**🌾 LSTM Graph Explanation**
+
+📊 **What the graph shows:**
+- **Gray line** = past measurements (what actually happened)
+- **Purple/orange line** = next 7 days prediction
+- **Yellow dashed line** = critical threshold (35% soil moisture)
+- **Green line** = today
+
+💡 **What to do:** If the purple line goes below the yellow line → irrigate immediately.`;
+
+  return `**🌾 Explication du graphique LSTM**
+
+📊 **Ce que montre le graphique :**
+- **Ligne grise** = mesures des jours passés (ce qui s'est passé réellement)
+- **Ligne violette/orange** = prévision sur les 7 prochains jours
+- **Ligne pointillée jaune** = seuil critique (35% humidité sol)
+- **Ligne verte** = aujourd'hui (maintenant)
+
+💡 **À retenir simplement :** Si la ligne violette descend sous la ligne jaune → irriguer immédiatement !`;
 }
 
 /* ═══════════════════════════════════════════════════════

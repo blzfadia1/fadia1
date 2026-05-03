@@ -1,3 +1,5 @@
+/* Safe T() wrapper — prevents "T is not defined" if called early */
+if (typeof T !== 'function') { window.T = function(k) { return k; }; }
 /* ════════════════════════════════════════════════════════════════
    AgriSmart — 05_rf.js — CORRIGE
    Conseils RF et textes résultat maintenant traduits via T()

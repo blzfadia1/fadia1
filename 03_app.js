@@ -26,8 +26,8 @@ function initApp() {
 
   /* Init toutes les pages */
   buildDashboard();
-  buildRFPage();
-  buildLSTMPage();
+  buildRFPage();    // async — charge les données ESP32 automatiquement
+  buildLSTMPage();  // async — charge les données ESP32 automatiquement
   buildIoTPage();
   buildHistoryPage();
   if (state.role === 'admin') buildAdminPage();
@@ -39,7 +39,7 @@ function initApp() {
   }, 1000);
 
   /* Mises à jour périodiques */
-  setInterval(updateLiveSensors, 10000);
+  setInterval(() => updateLiveSensors(), 10000);
   setInterval(loadAlertes, 30000);
   setInterval(refreshCNNData, 60000);   // ← CNN : rafraîchir les données live
 
@@ -144,27 +144,81 @@ let _lastCapteurs = null;
 async function updateLiveSensors() {
   const grid = document.getElementById('sensor-grid');
   if (!grid) return;
+  const lbl = document.getElementById('last-update-time');
 
-  const d = await apiCall('capteurs_live');
+  // Utilise iot_data.php — endpoint public sans session requise
+  let d;
+  try {
+    const r = await fetch('api/iot_data.php?action=capteurs', { cache:'no-cache' });
+    d = await r.json();
+    if (d.success && d.capteurs) d.capteurs = d.capteurs; // compatibilité
+  } catch(e) { d = { success: false }; }
+
   if (d.success && d.capteurs && d.capteurs.length > 0) {
     _lastCapteurs = d.capteurs;
+
+    // avg() retourne null si tous les capteurs ont NULL pour cette clé
     const avg = (key) => {
-      const vals = d.capteurs.map(c=>parseFloat(c[key])).filter(v=>!isNaN(v)&&v>0);
-      return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : null;
+      const nums = d.capteurs
+        .map(c => c[key])
+        .filter(v => v !== null && v !== undefined && !isNaN(parseFloat(v)))
+        .map(v => parseFloat(v));
+      return nums.length ? nums.reduce((a,b)=>a+b,0)/nums.length : null;
     };
-    const hs = avg('humidite_sol');
-    const ha = avg('humidite_air');
-    const _t = typeof T === 'function' ? T : k => k;
+
+    const temp = avg('temperature');
+    const hs   = avg('humidite_sol');
+    const ha   = avg('humidite_air');
+    const ph   = avg('ph');
+    const az   = avg('azote');
+    const po   = avg('phosphore');
+    const ka   = avg('potassium');
+    const lux  = avg('luminosite');
+    const co2  = avg('co2');
+    const _t   = typeof T === 'function' ? T : k => k;
+
     const data = [
-      { emoji:'🌡️', name:_t('sTemp'),      val: avg('temperature')?.toFixed(1)+'°C',  status:'ok',                            statusLabel:_t('stNormal') },
-      { emoji:'💧', name:_t('sHumSol'),    val: Math.round(hs)+'%',                   status: hs<20?'crit':hs<35?'warn':'ok', statusLabel: hs<20?_t('stCritique'):hs<35?_t('stSurveiller'):_t('stBon') },
-      { emoji:'🧪', name:_t('sPh'),        val: avg('ph')?.toFixed(1),                status: avg('ph')<5.5?'warn':'ok',       statusLabel: avg('ph')<5.5?_t('stAcide'):_t('stNeutre') },
-      { emoji:'🌿', name:_t('sAzote'),     val: Math.round(avg('azote'))+' kg',       status:'ok',                            statusLabel:_t('stSuffisant') },
-      { emoji:'⚗️', name:_t('sPhosphore'),val: Math.round(avg('phosphore'))+' kg',   status: avg('phosphore')<25?'crit':'ok', statusLabel: avg('phosphore')<25?_t('stCritique'):_t('stOk') },
-      { emoji:'🌧️', name:_t('sHumAir'),   val: Math.round(ha)+'%',                   status:'ok',                            statusLabel:_t('stNormal') },
-      { emoji:'☀️', name:_t('sLum'),       val: Math.round(avg('luminosite'))+' lx', status:'ok',                            statusLabel:_t('stBon') },
-      { emoji:'🔬', name:_t('sCo2'),       val: Math.round(avg('co2'))+' ppm',       status:'ok',                            statusLabel:_t('stNormal') },
+      { emoji:'🌡️', name:_t('sTemp'),
+        val:         temp!=null ? temp.toFixed(1)+'°C'        : '—',
+        status:      'ok',
+        statusLabel: temp!=null ? _t('stNormal')              : '—' },
+
+      { emoji:'💧', name:_t('sHumSol'),
+        val:         hs!=null ? Math.round(hs)+'%'            : '— non branché',
+        status:      hs!=null ? (hs<20?'crit':hs<35?'warn':'ok') : 'ok',
+        statusLabel: hs!=null ? (hs<20?_t('stCritique'):hs<35?_t('stSurveiller'):_t('stBon')) : 'Capteur absent' },
+
+      { emoji:'🧪', name:_t('sPh'),
+        val:         ph!=null ? ph.toFixed(1)                 : '— non branché',
+        status:      ph!=null ? (ph<5.5?'warn':'ok')          : 'ok',
+        statusLabel: ph!=null ? (ph<5.5?_t('stAcide'):_t('stNeutre')) : 'Capteur absent' },
+
+      { emoji:'🌿', name:_t('sAzote'),
+        val:         az!=null ? Math.round(az)+' kg'          : '— non branché',
+        status:      'ok',
+        statusLabel: az!=null ? _t('stSuffisant')             : 'Capteur absent' },
+
+      { emoji:'⚗️', name:_t('sPhosphore'),
+        val:         po!=null ? Math.round(po)+' kg'          : '— non branché',
+        status:      po!=null ? (po<25?'crit':'ok')           : 'ok',
+        statusLabel: po!=null ? (po<25?_t('stCritique'):_t('stOk')) : 'Capteur absent' },
+
+      { emoji:'🌧️', name:_t('sHumAir'),
+        val:         ha!=null ? Math.round(ha)+'%'            : '—',
+        status:      'ok',
+        statusLabel: ha!=null ? _t('stNormal')                : '—' },
+
+      { emoji:'☀️', name:_t('sLum'),
+        val:         lux!=null ? Math.round(lux)+' lx'        : '— non branché',
+        status:      'ok',
+        statusLabel: lux!=null ? _t('stBon')                  : 'Capteur absent' },
+
+      { emoji:'🔬', name:_t('sCo2'),
+        val:         co2!=null ? Math.round(co2)+' ppm'       : '— non branché',
+        status:      'ok',
+        statusLabel: co2!=null ? _t('stNormal')               : 'Capteur absent' },
     ];
+
     grid.innerHTML = data.map(s => `
       <div class="sensor-card ${s.status}">
         <div class="sensor-emoji">${s.emoji}</div>
@@ -172,26 +226,21 @@ async function updateLiveSensors() {
         <div class="sensor-name">${s.name}</div>
         <div class="sensor-status s-${s.status}">${s.statusLabel}</div>
       </div>`).join('');
+
+    if (lbl) lbl.textContent = '✅ ' + new Date().toLocaleTimeString('fr-FR');
+
   } else {
-    /* Fallback hors-ligne */
-    const hs = Math.round(35+Math.random()*30);
-    const _t2 = typeof T === 'function' ? T : k => k;
-    const data = [
-      { emoji:'🌡️', name:_t2('sTemp'),     val: (22+Math.random()*8).toFixed(1)+'°C',  status:'ok',         statusLabel:_t2('stNormal')+' (local)' },
-      { emoji:'💧', name:_t2('sHumSol'),   val: hs+'%',                                status:hs<30?'warn':'ok', statusLabel:hs<30?_t2('stSurveiller'):_t2('stBon') },
-      { emoji:'🧪', name:_t2('sPh'),       val: (5.8+Math.random()*2).toFixed(1),      status:'ok',         statusLabel:_t2('stNeutre')+' (local)' },
-      { emoji:'🌿', name:_t2('sAzote'),    val: Math.round(55+Math.random()*40)+' kg', status:'ok',         statusLabel:_t2('stSuffisant') },
-      { emoji:'⚗️', name:_t2('sPhosphore'),val: Math.round(30+Math.random()*30)+' kg', status:'ok',         statusLabel:_t2('stOk') },
-      { emoji:'🌧️', name:_t2('sHumAir'),  val: Math.round(50+Math.random()*30)+'%',   status:'ok',         statusLabel:_t2('stNormal') },
-      { emoji:'☀️', name:_t2('sLum'),      val: Math.round(600+Math.random()*800)+' lx',status:'ok',        statusLabel:_t2('stBon') },
-      { emoji:'🔬', name:_t2('sCo2'),      val: Math.round(380+Math.random()*50)+' ppm',status:'ok',        statusLabel:_t2('stNormal') },
-    ];
-    grid.innerHTML = data.map(s => `
-      <div class="sensor-card ${s.status}">
-        <div class="sensor-emoji">${s.emoji}</div>
-        <div class="sensor-val">${s.val} <span style="font-size:9px;opacity:.4">${_t2('stHorsLigne')}</span></div>
-        <div class="sensor-name">${s.name}</div>
-        <div class="sensor-status s-${s.status}">${s.statusLabel}</div>
-      </div>`).join('');
+    /* ESP32 non connecté — message propre SANS données inventées */
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:28px 16px;">
+        <div style="font-size:28px;margin-bottom:8px">📡</div>
+        <div style="font-size:14px;font-weight:600;color:var(--slate);margin-bottom:6px">ESP32 non connecté</div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:12px">Vérifiez que l'ESP32 est branché et XAMPP lancé</div>
+        <button onclick="updateLiveSensors()"
+          style="font-size:12px;padding:6px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;">
+          🔄 Réessayer
+        </button>
+      </div>`;
+    if (lbl) lbl.textContent = '⚠️ Hors ligne';
   }
 }

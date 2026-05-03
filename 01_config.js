@@ -20,7 +20,7 @@ const USERS_API = 'api/users.php';
 async function apiCall(action, method = 'GET', body = null) {
   try {
     const url  = `${API}?action=${action}`;
-    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    const opts = { method, credentials: 'include', headers: { 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
     const r = await fetch(url, opts);
     if (!r.ok) return { success: false, offline: false, http: r.status };
@@ -35,7 +35,7 @@ async function usersApiCall(action, method = 'GET', body = null, id = null) {
   try {
     let url = `${USERS_API}?action=${action}`;
     if (id) url += `&id=${id}`;
-    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    const opts = { method, credentials: 'include', headers: { 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
     const r = await fetch(url, opts);
     if (!r.ok) {
