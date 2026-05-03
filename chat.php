@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 //  ⚠️  CONFIGURATION — METTEZ VOTRE CLÉ ANTHROPIC ICI
 //  Obtenez une clé gratuite sur : https://console.anthropic.com
 // ════════════════════════════════════════════════════════════
-define('ANTHROPIC_API_KEY', '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');
+define('ANTHROPIC_API_KEY', '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');
 // ════════════════════════════════════════════════════════════
 
 define('CLAUDE_MODEL',   'claude-haiku-4-5-20251001');  // Rapide et gratuit
@@ -178,8 +178,38 @@ if (empty($messages)) {
 // Valider les messages (max 20, longueur max par message)
 $messages = array_slice($messages, -20);
 foreach ($messages as &$m) {
-    $m['content'] = mb_substr($m['content'] ?? '', 0, 4000);
-    $m['role']    = in_array($m['role'] ?? '', ['user', 'assistant']) ? $m['role'] : 'user';
+    $m['role'] = in_array($m['role'] ?? '', ['user', 'assistant']) ? $m['role'] : 'user';
+
+    if (is_string($m['content'])) {
+        // Texte simple — tronquer
+        $m['content'] = mb_substr($m['content'], 0, 4000);
+    } elseif (is_array($m['content'])) {
+        // Contenu multimodal (texte + image) — valider chaque bloc
+        foreach ($m['content'] as &$block) {
+            $type = $block['type'] ?? '';
+            if ($type === 'text') {
+                $block['text'] = mb_substr($block['text'] ?? '', 0, 4000);
+            } elseif ($type === 'image') {
+                // Valider le format base64 de l'image
+                $src = $block['source'] ?? [];
+                if (($src['type'] ?? '') === 'base64') {
+                    $allowed = ['image/jpeg','image/jpg','image/png','image/gif','image/webp'];
+                    if (!in_array($src['media_type'] ?? '', $allowed)) {
+                        $block['type'] = 'text';
+                        $block['text'] = '[Image non supportée]';
+                    }
+                    // Vérifier taille base64 (max ~5 Mo)
+                    if (strlen($src['data'] ?? '') > 7000000) {
+                        $block['type'] = 'text';
+                        $block['text'] = '[Image trop grande]';
+                    }
+                }
+            }
+        }
+        unset($block);
+    } else {
+        $m['content'] = '';
+    }
 }
 unset($m);
 
@@ -224,30 +254,62 @@ $liveContext
 ## UTILISATEUR
 Prénom/Nom: $userName | Rôle: $role | Langue préférée: $lang
 
+## ANALYSE D'IMAGES LSTM / GRAPHIQUES
+Quand l'utilisateur envoie une image d'un graphique LSTM ou de prévision :
+1. **Identifie le type de graphique** (humidité sol, température, etc.)
+2. **Explique d'abord simplement** : une phrase que même quelqu'un sans éducation comprend
+3. **Ensuite les détails** : ce que montrent les courbes, les couleurs, les axes
+4. **La ligne d'aujourd'hui** : où on est maintenant, passé vs futur
+5. **Conseil agricole pratique** : que doit faire l'agriculteur selon ce graphique ?
+6. **En arabe** si le message est en arabe : explication avec termes simples
+
+Structure de réponse pour image LSTM :
+- 🌾 **En bref** : une phrase simple
+- 📊 **Ce que montre le graphique** : explication détaillée des courbes
+- 📍 **Aujourd'hui** : valeur actuelle
+- 🔮 **Prévision** : ce qui va se passer selon le modèle
+- 💡 **Action recommandée** : que faire maintenant ?
+
 ## RÈGLES
 1. Réponds dans la langue détectée dans le message (FR/AR/EN)
 2. Utilise markdown : **gras**, listes, emojis agricoles
-3. Max 300 mots sauf explication technique
+3. Max 400 mots pour les images, 300 pour texte simple
 4. Commente les données live si pertinent
-5. Sois pratique et direct
+5. Sois pratique et direct — langage accessible à tous
+6. Pour les images : décris TOUJOURS ce que tu vois visuellement avant d'expliquer
 PROMPT;
 
 // ── Appel Claude API ─────────────────────────────────────────
+// Debug: log si image reçue
+$has_image = false;
+foreach ($messages as $m) {
+    if (is_array($m['content'] ?? null)) {
+        foreach ($m['content'] as $block) {
+            if (($block['type'] ?? '') === 'image') {
+                $has_image = true;
+                error_log('[AgroBot] Image reçue: ' . ($block['source']['media_type'] ?? 'unknown') 
+                    . ' taille=' . strlen($block['source']['data'] ?? '') . ' bytes');
+            }
+        }
+    }
+}
+
 $payload = json_encode([
     'model'      => CLAUDE_MODEL,
-    'max_tokens' => MAX_TOKENS,
+    'max_tokens' => $has_image ? 1200 : MAX_TOKENS, // Plus de tokens pour analyse image
     'system'     => $systemPrompt,
     'messages'   => $messages,
 ], JSON_UNESCAPED_UNICODE);
 
 // Vérifier si la clé est configurée
-if (ANTHROPIC_API_KEY === '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' || empty(ANTHROPIC_API_KEY)) {
+// Vérifier que la clé est valide (commence par sk-ant- et fait > 20 chars)
+if (empty(ANTHROPIC_API_KEY) || strlen(ANTHROPIC_API_KEY) < 20 || !str_starts_with(ANTHROPIC_API_KEY, 'sk-ant-')) {
     ob_clean();
     http_response_code(200);
     die(json_encode([
         'success' => false,
         'error'   => 'no_key',
-        'message' => '⚙️ Clé Anthropic non configurée. Éditez api/chat.php et remplacez sk-ant-VOTRE_CLE_ICI par votre vraie clé (console.anthropic.com).',
+        'message' => '⚙️ Clé Anthropic invalide. Éditez api/chat.php et vérifiez ANTHROPIC_API_KEY.',
     ], JSON_UNESCAPED_UNICODE));
 }
 
@@ -256,7 +318,7 @@ curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST           => true,
     CURLOPT_POSTFIELDS     => $payload,
-    CURLOPT_TIMEOUT        => 30,
+    CURLOPT_TIMEOUT        => 60,
     CURLOPT_HTTPHEADER     => [
         'Content-Type: application/json',
         'x-api-key: ' . ANTHROPIC_API_KEY,

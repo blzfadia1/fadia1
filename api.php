@@ -39,7 +39,7 @@ if ($action === 'stats' && $_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // ── CAPTEURS — lecture ──────────────────────────────────────
 elseif ($action === 'capteurs_live' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    requireAuth(); // Tout utilisateur connecté
+    // Pas de requireAuth() ici — données capteurs lisibles après login ou direct
     $db   = getDB();
     $rows = $db->query("
         SELECT c.* FROM capteurs c
@@ -50,13 +50,15 @@ elseif ($action === 'capteurs_live' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     ")->fetchAll();
     foreach ($rows as &$r) {
         $r['id']           = (int)$r['id'];
-        $r['humidite_sol'] = (int)$r['humidite_sol'];
-        $r['humidite_air'] = (int)$r['humidite_air'];
-        $r['azote']        = (int)$r['azote'];
-        $r['phosphore']    = (int)$r['phosphore'];
-        $r['potassium']    = (int)$r['potassium'];
-        $r['luminosite']   = (int)$r['luminosite'];
-        $r['co2']          = (int)$r['co2'];
+        $r['temperature']  = $r['temperature']  !== null ? (float)$r['temperature']  : null;
+        $r['humidite_sol'] = $r['humidite_sol'] !== null ? (int)$r['humidite_sol']   : null;
+        $r['humidite_air'] = $r['humidite_air'] !== null ? (int)$r['humidite_air']   : null;
+        $r['ph']           = $r['ph']           !== null ? (float)$r['ph']           : null;
+        $r['azote']        = $r['azote']        !== null ? (int)$r['azote']          : null;
+        $r['phosphore']    = $r['phosphore']    !== null ? (int)$r['phosphore']      : null;
+        $r['potassium']    = $r['potassium']    !== null ? (int)$r['potassium']      : null;
+        $r['luminosite']   = $r['luminosite']   !== null ? (int)$r['luminosite']     : null;
+        $r['co2']          = $r['co2']          !== null ? (int)$r['co2']            : null;
     }
     ok(['capteurs' => $rows]);
 }
@@ -133,7 +135,6 @@ elseif ($action === 'capteurs_save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ── ALERTES ─────────────────────────────────────────────────
 elseif ($action === 'alertes' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    requireAuth();
     $db  = getDB();
     $lue = $_GET['lue'] ?? '';
     $sql = "SELECT * FROM alertes";
@@ -179,17 +180,16 @@ elseif ($action === 'alerte_add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ── HISTORIQUE ───────────────────────────────────────────────
 elseif ($action === 'historique' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    requireAuth();
-    $db     = getDB();
-    $filter = sanitizeString($_GET['action_filter'] ?? '', 50);
-    $limit  = min(abs((int)($_GET['limit'] ?? 20)), 100);
+    // Lire les vraies mesures ESP32 depuis la table capteurs
+    $db    = getDB();
+    $limit = min(abs((int)($_GET['limit'] ?? 50)), 200);
+    $node  = sanitizeString($_GET['node'] ?? '', 50);
 
-    $actions_valides = ['Aucune', 'Irrigation', 'Alerte pH', 'Fertilisation'];
-    $sql    = "SELECT * FROM historique_actions";
+    $sql    = "SELECT id, node_id, temperature, humidite_sol, humidite_air, ph, azote, phosphore, potassium, luminosite, co2, created_at FROM capteurs";
     $params = [];
-    if ($filter && in_array($filter, $actions_valides)) {
-        $sql .= " WHERE action = ?";
-        $params[] = $filter;
+    if ($node) {
+        $sql .= " WHERE node_id = ?";
+        $params[] = $node;
     }
     $sql .= " ORDER BY created_at DESC LIMIT ?";
     $params[] = $limit;
@@ -197,11 +197,29 @@ elseif ($action === 'historique' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
     $rows = $stmt->fetchAll();
+
     foreach ($rows as &$r) {
-        $r['id']       = (int)$r['id'];
-        $r['humidite'] = (int)$r['humidite'];
+        $r['id']          = (int)$r['id'];
+        $r['temperature'] = $r['temperature']  !== null ? (float)$r['temperature']  : null;
+        $r['humidite_sol']= $r['humidite_sol'] !== null ? (int)$r['humidite_sol']   : null;
+        $r['humidite_air']= $r['humidite_air'] !== null ? (int)$r['humidite_air']   : null;
+        $r['ph']          = $r['ph']           !== null ? (float)$r['ph']           : null;
+        $r['azote']       = $r['azote']        !== null ? (int)$r['azote']          : null;
+        $r['phosphore']   = $r['phosphore']    !== null ? (int)$r['phosphore']      : null;
+        $r['potassium']   = $r['potassium']    !== null ? (int)$r['potassium']      : null;
+        $r['luminosite']  = $r['luminosite']   !== null ? (int)$r['luminosite']     : null;
+        $r['co2']         = $r['co2']          !== null ? (int)$r['co2']            : null;
         $ts = strtotime($r['created_at']);
-        $r['time_label'] = date('d/m/Y H:i', $ts);
+        $r['time_label']  = date('d/m/Y H:i:s', $ts);
+
+        // Générer action automatique selon les valeurs
+        $action_auto = 'Normal';
+        if ($r['humidite_sol'] !== null && $r['humidite_sol'] < 20) $action_auto = '⚠️ Sec critique';
+        elseif ($r['humidite_sol'] !== null && $r['humidite_sol'] < 35) $action_auto = '⚡ Irriguer';
+        elseif ($r['ph'] !== null && $r['ph'] < 5.5) $action_auto = '🧪 pH acide';
+        elseif ($r['ph'] !== null && $r['ph'] > 7.5) $action_auto = '🧪 pH alcalin';
+        elseif ($r['temperature'] !== null && $r['temperature'] > 38) $action_auto = '🌡️ Chaleur';
+        $r['action'] = $action_auto;
     }
     ok(['historique' => $rows]);
 }
@@ -223,7 +241,7 @@ elseif ($action === 'historique_add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ── NŒUDS IoT ────────────────────────────────────────────────
 elseif ($action === 'noeuds' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    requireAuth();
+
     $db   = getDB();
     $rows = $db->query("SELECT * FROM noeuds_iot ORDER BY node_id")->fetchAll();
     foreach ($rows as &$r) {
@@ -258,7 +276,6 @@ elseif ($action === 'noeud_update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ── TIMELINE ─────────────────────────────────────────────────
 elseif ($action === 'timeline' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    requireAuth();
     $db   = getDB();
     $rows = $db->query("SELECT * FROM timeline ORDER BY created_at DESC LIMIT 10")->fetchAll();
     foreach ($rows as &$r) {

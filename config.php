@@ -9,9 +9,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
         'lifetime' => 3600,          // Expire après 1h d'inactivité
         'path'     => '/',
-        'secure'   => TRUE,         // Mettre TRUE en production (HTTPS)
-        'httponly' => true,           // Inaccessible en JavaScript
-        'samesite' => 'Strict',
+        'secure'   => FALSE,        // FALSE en local (HTTP) — TRUE en production (HTTPS)
+        'httponly' => true,
+        'samesite' => 'Lax',        // Lax permet les requêtes locales
     ]);
     session_start();
 }
