@@ -1,8 +1,7 @@
 /* ════════════════════════════════════════════════════════════════
-   AgriSmart — 03_app.js
-   APP — Initialisation, Navigation, Capteurs live
+   AgriSmart — 03 — APP — Initialisation, Navigation, Capteurs live
    initApp(), buildSidebarNav(), navigateTo(), toggleSidebar(), updateLiveSensors()
-   ✅ CNN intégré : buildCNNPage() + refreshCNNData() toutes les 60s
+   Fichier : 03_app.js
 ════════════════════════════════════════════════════════════════ */
 
 "use strict";
@@ -14,44 +13,45 @@ function initApp() {
   const usr = CURRENT_USER || {
     avatar:'A', nom:'Utilisateur', badgeLabel:'USER', badgeClass:'badge-agri'
   };
+  // Sidebar user info depuis MySQL
   document.getElementById('sb-avatar').textContent  = usr.avatar || usr.prenom?.[0] || 'U';
   document.getElementById('sb-avatar').style.background = state.role==='admin'?'#7c3aed':state.role==='agriculteur'?'#16a34a':'#0284c7';
   document.getElementById('sb-uname').textContent   = usr.nom;
   document.getElementById('sb-badge').textContent   = usr.badgeLabel;
   document.getElementById('sb-badge').className     = `sb-role-badge ${usr.badgeClass}`;
 
-  /* Sidebar + mobile nav */
+  // Build sidebar nav
   buildSidebarNav();
+  // Build mobile nav
   buildMobileNav();
 
-  /* Init toutes les pages */
+  // Init pages (dashboard charge les données live lui-même)
   buildDashboard();
-  buildRFPage();    // async — charge les données ESP32 automatiquement
-  buildLSTMPage();  // async — charge les données ESP32 automatiquement
+  buildRFPage();
+  buildLSTMPage();
   buildIoTPage();
   buildHistoryPage();
-  if (state.role === 'admin') buildAdminPage();
-  buildCNNPage();   // ← CNN
+  if(state.role==='admin') buildAdminPage();
 
-  /* Horloge topbar */
+  // Clock
   setInterval(() => {
     document.getElementById('topbar-time').textContent = new Date().toLocaleTimeString('fr-FR');
   }, 1000);
 
-  /* Mises à jour périodiques */
-  setInterval(() => updateLiveSensors(), 10000);
+  // Live sensor updates depuis MySQL toutes les 10 secondes
+  setInterval(updateLiveSensors, 10000);
+  // Rafraîchir alertes toutes les 30 secondes
   setInterval(loadAlertes, 30000);
-  setInterval(refreshCNNData, 60000);   // ← CNN : rafraîchir les données live
 
   navigateTo('dashboard');
-  showNotif(`${typeof T==='function'?T('notifWelcome'):'✅ Bienvenue'}, ${usr.nom} !`);
+  showNotif(`✅ Bienvenue, ${usr.nom} !`);
 
+  // ── Connexion MySQL
   checkDbStatus();
-  loadDashboardStats();
 }
 
 /* ═══════════════════════════════════════════════════════
-   CHECK DB STATUS
+   CHECK DB STATUS — vérifie que MySQL répond
 ═══════════════════════════════════════════════════════ */
 async function checkDbStatus() {
   const d = await apiCall('stats');
@@ -66,9 +66,6 @@ async function checkDbStatus() {
   }
 }
 
-/* ═══════════════════════════════════════════════════════
-   SIDEBAR NAV
-═══════════════════════════════════════════════════════ */
 function buildSidebarNav() {
   const nav   = document.getElementById('sidebar-nav');
   const items = NAV_CONFIG[state.role];
@@ -87,9 +84,6 @@ function buildSidebarNav() {
   });
 }
 
-/* ═══════════════════════════════════════════════════════
-   NAVIGATION
-═══════════════════════════════════════════════════════ */
 function navigateTo(id) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -99,36 +93,32 @@ function navigateTo(id) {
   if (pi) pi.classList.add('active');
   state.currentPage = id;
 
-  /* Fermer sidebar mobile */
+  // Close mobile sidebar if open
   document.getElementById('sidebar').classList.remove('mob-open');
   document.getElementById('sidebar-overlay').classList.remove('open');
 
-  /* Mobile bottom nav */
+  // Update mobile bottom nav
   updateMobileNav(id);
 
-  /* Titre topbar */
   const labels = {
-    dashboard : 'Tableau de Bord',
-    rf        : 'Random Forest — Recommandation Culture',
-    lstm      : 'Prévision LSTM — Séries Temporelles',
-    iot       : 'IoT · ESP32 · LoRaWAN',
-    history   : 'Historique des Données',
-    admin     : 'Administration',
-    cnn       : 'Analyse CNN — Zones Agricoles',
+    dashboard:'Tableau de Bord', rf:'Random Forest — Recommandation Culture',
+    lstm:'Prévision LSTM — Séries Temporelles', iot:'IoT · ESP32 · LoRaWAN',
+    history:'Historique des Données', admin:'Administration',
   };
   document.getElementById('topbar-title').textContent = labels[id] || id;
 
-  /* Hooks par page */
-  if (id === 'dashboard') { drawLSTMChart('lstm-chart', false); loadAlertes(); loadNoeudsLoRa(); loadDashboardStats(); }
-  if (id === 'lstm')      { drawLSTMChart('lstm-big', true); drawTempChart(); }
-  if (id === 'history')   buildHistoryPage();
-  if (id === 'iot')       buildIoTPage();
-  if (id === 'cnn')       buildCNNPage();   // ← CNN : recharge données live à chaque visite
+  // Recharger les données à chaque visite de page
+  if (id==='dashboard') {
+    loadDashboardStats();
+    updateLiveSensors();
+    loadAlertes();
+    loadNoeudsLoRa();
+  }
+  if (id==='lstm')    { buildLSTMPage(); drawTempChart(); }
+  if (id==='history') buildHistoryPage();
+  if (id==='iot')     buildIoTPage();
 }
 
-/* ═══════════════════════════════════════════════════════
-   SIDEBAR TOGGLE
-═══════════════════════════════════════════════════════ */
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
   state.sidebarCollapsed = !state.sidebarCollapsed;
@@ -137,88 +127,35 @@ function toggleSidebar() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   SENSOR DATA LIVE (depuis MySQL, fallback aléatoire)
+   SENSOR DATA (simulated live)
 ═══════════════════════════════════════════════════════ */
+// Données capteurs depuis MySQL (fallback aléatoire si hors-ligne)
 let _lastCapteurs = null;
 
 async function updateLiveSensors() {
   const grid = document.getElementById('sensor-grid');
   if (!grid) return;
-  const lbl = document.getElementById('last-update-time');
 
-  // Utilise iot_data.php — endpoint public sans session requise
-  let d;
-  try {
-    const r = await fetch('api/iot_data.php?action=capteurs', { cache:'no-cache' });
-    d = await r.json();
-    if (d.success && d.capteurs) d.capteurs = d.capteurs; // compatibilité
-  } catch(e) { d = { success: false }; }
-
+  const d = await apiCall('capteurs_live');
   if (d.success && d.capteurs && d.capteurs.length > 0) {
     _lastCapteurs = d.capteurs;
-
-    // avg() retourne null si tous les capteurs ont NULL pour cette clé
+    // Agréger toutes les mesures (moyenne des nœuds actifs)
     const avg = (key) => {
-      const nums = d.capteurs
-        .map(c => c[key])
-        .filter(v => v !== null && v !== undefined && !isNaN(parseFloat(v)))
-        .map(v => parseFloat(v));
-      return nums.length ? nums.reduce((a,b)=>a+b,0)/nums.length : null;
+      const vals = d.capteurs.map(c=>parseFloat(c[key])).filter(v=>!isNaN(v)&&v>0);
+      return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : null;
     };
-
-    const temp = avg('temperature');
-    const hs   = avg('humidite_sol');
-    const ha   = avg('humidite_air');
-    const ph   = avg('ph');
-    const az   = avg('azote');
-    const po   = avg('phosphore');
-    const ka   = avg('potassium');
-    const lux  = avg('luminosite');
-    const co2  = avg('co2');
-    const _t   = typeof T === 'function' ? T : k => k;
-
+    const hs = avg('humidite_sol');
+    const ha = avg('humidite_air');
     const data = [
-      { emoji:'🌡️', name:_t('sTemp'),
-        val:         temp!=null ? temp.toFixed(1)+'°C'        : '—',
-        status:      'ok',
-        statusLabel: temp!=null ? _t('stNormal')              : '—' },
-
-      { emoji:'💧', name:_t('sHumSol'),
-        val:         hs!=null ? Math.round(hs)+'%'            : '— non branché',
-        status:      hs!=null ? (hs<20?'crit':hs<35?'warn':'ok') : 'ok',
-        statusLabel: hs!=null ? (hs<20?_t('stCritique'):hs<35?_t('stSurveiller'):_t('stBon')) : 'Capteur absent' },
-
-      { emoji:'🧪', name:_t('sPh'),
-        val:         ph!=null ? ph.toFixed(1)                 : '— non branché',
-        status:      ph!=null ? (ph<5.5?'warn':'ok')          : 'ok',
-        statusLabel: ph!=null ? (ph<5.5?_t('stAcide'):_t('stNeutre')) : 'Capteur absent' },
-
-      { emoji:'🌿', name:_t('sAzote'),
-        val:         az!=null ? Math.round(az)+' kg'          : '— non branché',
-        status:      'ok',
-        statusLabel: az!=null ? _t('stSuffisant')             : 'Capteur absent' },
-
-      { emoji:'⚗️', name:_t('sPhosphore'),
-        val:         po!=null ? Math.round(po)+' kg'          : '— non branché',
-        status:      po!=null ? (po<25?'crit':'ok')           : 'ok',
-        statusLabel: po!=null ? (po<25?_t('stCritique'):_t('stOk')) : 'Capteur absent' },
-
-      { emoji:'🌧️', name:_t('sHumAir'),
-        val:         ha!=null ? Math.round(ha)+'%'            : '—',
-        status:      'ok',
-        statusLabel: ha!=null ? _t('stNormal')                : '—' },
-
-      { emoji:'☀️', name:_t('sLum'),
-        val:         lux!=null ? Math.round(lux)+' lx'        : '— non branché',
-        status:      'ok',
-        statusLabel: lux!=null ? _t('stBon')                  : 'Capteur absent' },
-
-      { emoji:'🔬', name:_t('sCo2'),
-        val:         co2!=null ? Math.round(co2)+' ppm'       : '— non branché',
-        status:      'ok',
-        statusLabel: co2!=null ? _t('stNormal')               : 'Capteur absent' },
+      { emoji:'🌡️', name:'Température',   val: avg('temperature')?.toFixed(1)+'°C',         status:'ok',                             statusLabel:'Normal' },
+      { emoji:'💧', name:'Humidité Sol',   val: Math.round(hs)+'%',                          status: hs<20?'crit':hs<35?'warn':'ok',  statusLabel: hs<20?'Critique':hs<35?'Surveiller':'Bon' },
+      { emoji:'🧪', name:'pH du Sol',      val: avg('ph')?.toFixed(1),                       status: avg('ph')<5.5?'warn':'ok',        statusLabel: avg('ph')<5.5?'Acide':'Neutre' },
+      { emoji:'🌿', name:'Azote (N)',      val: Math.round(avg('azote'))+' kg',              status:'ok',                             statusLabel:'Suffisant' },
+      { emoji:'⚗️', name:'Phosphore (P)', val: Math.round(avg('phosphore'))+' kg',          status: avg('phosphore')<25?'crit':'ok',  statusLabel: avg('phosphore')<25?'Critique':'OK' },
+      { emoji:'🌧️', name:'Humidité Air',  val: Math.round(ha)+'%',                          status:'ok',                             statusLabel:'Normal' },
+      { emoji:'☀️', name:'Luminosité',    val: Math.round(avg('luminosite'))+' lx',         status:'ok',                             statusLabel:'Bon' },
+      { emoji:'🔬', name:'CO₂',           val: Math.round(avg('co2'))+' ppm',               status:'ok',                             statusLabel:'Normal' },
     ];
-
     grid.innerHTML = data.map(s => `
       <div class="sensor-card ${s.status}">
         <div class="sensor-emoji">${s.emoji}</div>
@@ -226,21 +163,25 @@ async function updateLiveSensors() {
         <div class="sensor-name">${s.name}</div>
         <div class="sensor-status s-${s.status}">${s.statusLabel}</div>
       </div>`).join('');
-
-    if (lbl) lbl.textContent = '✅ ' + new Date().toLocaleTimeString('fr-FR');
-
   } else {
-    /* ESP32 non connecté — message propre SANS données inventées */
-    grid.innerHTML = `
-      <div style="grid-column:1/-1;text-align:center;padding:28px 16px;">
-        <div style="font-size:28px;margin-bottom:8px">📡</div>
-        <div style="font-size:14px;font-weight:600;color:var(--slate);margin-bottom:6px">ESP32 non connecté</div>
-        <div style="font-size:12px;color:#94a3b8;margin-bottom:12px">Vérifiez que l'ESP32 est branché et XAMPP lancé</div>
-        <button onclick="updateLiveSensors()"
-          style="font-size:12px;padding:6px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;">
-          🔄 Réessayer
-        </button>
-      </div>`;
-    if (lbl) lbl.textContent = '⚠️ Hors ligne';
+    // Fallback hors-ligne : données aléatoires
+    const hs = Math.round(35+Math.random()*30);
+    const data = [
+      { emoji:'🌡️', name:'Température',   val: (22+Math.random()*8).toFixed(1)+'°C',  status:'ok',  statusLabel:'Normal (local)' },
+      { emoji:'💧', name:'Humidité Sol',   val: hs+'%',  status:hs<30?'warn':'ok', statusLabel:hs<30?'Surveiller':'Bon' },
+      { emoji:'🧪', name:'pH du Sol',      val: (5.8+Math.random()*2).toFixed(1),      status:'ok',  statusLabel:'Neutre (local)' },
+      { emoji:'🌿', name:'Azote (N)',      val: Math.round(55+Math.random()*40)+' kg', status:'ok',  statusLabel:'Suffisant' },
+      { emoji:'⚗️', name:'Phosphore (P)', val: Math.round(30+Math.random()*30)+' kg', status:'ok',  statusLabel:'OK' },
+      { emoji:'🌧️', name:'Humidité Air',  val: Math.round(50+Math.random()*30)+'%',   status:'ok',  statusLabel:'Normal' },
+      { emoji:'☀️', name:'Luminosité',    val: Math.round(600+Math.random()*800)+' lx',status:'ok', statusLabel:'Bon' },
+      { emoji:'🔬', name:'CO₂',           val: Math.round(380+Math.random()*50)+' ppm',status:'ok', statusLabel:'Normal' },
+    ];
+    grid.innerHTML = data.map(s => `
+      <div class="sensor-card ${s.status}">
+        <div class="sensor-emoji">${s.emoji}</div>
+        <div class="sensor-val">${s.val} <span style="font-size:9px;opacity:.4">hors-ligne</span></div>
+        <div class="sensor-name">${s.name}</div>
+        <div class="sensor-status s-${s.status}">${s.statusLabel}</div>
+      </div>`).join('');
   }
 }

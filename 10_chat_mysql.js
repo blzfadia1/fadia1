@@ -1,16 +1,14 @@
 /* ════════════════════════════════════════════════════════════════
    AgriSmart — 10 — CHATBOT IA — Version Proxy Claude
    ✅ Appelle api/chat.php (proxy serveur) → Claude API
+   ✅ Images envoyées directement en multimodal via chat.php
    ✅ Pas de clé API dans le navigateur (sécurisé)
    ✅ Fallback local intelligent si le serveur est éteint
    ✅ Contexte MySQL live injecté côté serveur (chat.php)
    ✅ Conserve : TTS, STT, boutons rapides, langues FR/AR/EN
-   ✅ Conserve : pièces jointes (images/fichiers)
    Fichier : 10_chat_mysql.js
 ════════════════════════════════════════════════════════════════ */
-let pendingImageB64  = null;
-let pendingImageType = null;
-let pendingImageName = null;
+
 "use strict";
 
 /* ═══════════════════════════════════════════════════════
@@ -56,20 +54,15 @@ let _chatHistory  = [];   // [{role:'user'|'assistant', content:'...'}]
 let _chatLang     = 'fr';
 let _isSpeaking   = false;
 let _recognitionRef = null;
-let _attachedFile   = null;
+let _attachedFile   = null;  // File object sélectionné
+let _pendingImageB64  = null; // base64 de l'image (sans préfixe data:)
+let _pendingImageType = null; // ex: 'image/jpeg'
+let _pendingImageName = null; // nom du fichier
 
 /* ═══════════════════════════════════════════════════════
-   PROMPT SYSTÈME — utilisé par le fallback local
-═══════════════════════════════════════════════════════ */
-const SYSTEM_PROMPT = `Tu es AgroBot, l'assistant IA d'AgriSmart.
-Expert agronome + IoT agricole. Réponds dans la langue de l'utilisateur (FR/AR/EN).
-Sois pratique, concis (max 300 mots), utilise le markdown et les emojis agricoles.`;
-
-/* ═══════════════════════════════════════════════════════
-   APPEL PRINCIPAL — Proxy PHP → Claude API
+   APPEL PRINCIPAL — Proxy PHP → Claude API (texte seul)
 ═══════════════════════════════════════════════════════ */
 async function _callClaude(userMessage) {
-  // Ajouter à l'historique
   _chatHistory.push({ role: 'user', content: userMessage });
   if (_chatHistory.length > 20) _chatHistory = _chatHistory.slice(-20);
 
@@ -91,31 +84,25 @@ async function _callClaude(userMessage) {
 
     const d = await r.json();
 
-    // Clé non configurée → fallback local avec message d'info
     if (!d.success && d.error === 'no_key') {
       _chatHistory.pop();
       const reply = _fallbackLocal(userMessage);
       _chatHistory.push({ role: 'assistant', content: reply });
-      return reply + '\n\n---\n⚙️ *Pour activer Claude IA : éditez `api/chat.php` et ajoutez votre clé Anthropic (gratuit sur console.anthropic.com)*';
+      return reply + '\n\n---\n⚙️ *Pour activer Claude IA : éditez `api/chat.php` et ajoutez votre clé Anthropic.*';
     }
 
-    // Autre erreur serveur → fallback local
     if (!d.success) {
-      console.warn('[AgroBot] API error:', d.message);
       _chatHistory.pop();
       const reply = _fallbackLocal(userMessage);
       _chatHistory.push({ role: 'assistant', content: reply });
       return reply;
     }
 
-    // ✅ Succès Claude
     const reply = d.reply || '';
     _chatHistory.push({ role: 'assistant', content: reply });
     return reply;
 
   } catch(e) {
-    console.warn('[AgroBot] Fetch error:', e.message);
-    // XAMPP éteint ou réseau → fallback local
     _chatHistory.pop();
     const reply = _fallbackLocal(userMessage);
     _chatHistory.push({ role: 'assistant', content: reply });
@@ -124,124 +111,109 @@ async function _callClaude(userMessage) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   APPEL AVEC FICHIER/IMAGE — Gemini Vision optionnel
-   (ou analyse locale si pas de clé)
+   APPEL AVEC IMAGE — Multimodal via chat.php
+   chat.php gère déjà les images base64 nativement
 ═══════════════════════════════════════════════════════ */
-async function _callClaudeWithFile(userText, file) {
-  const lang    = _detectLang(userText || '');
-  const isImage = file.type.startsWith('image/');
-  const userName = CURRENT_USER
-    ? ((CURRENT_USER.prenom||'') + ' ' + (CURRENT_USER.nom||'')).trim() : '';
+async function _callClaudeWithImage(userText, imageB64, imageType, imageName) {
+  const lang = _chatLang;
 
-  if (!isImage) {
-    return _analyserFichierLocal(file, userText, lang);
+  // Valider que c'est bien une image
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+  if (!allowedTypes.includes(imageType)) {
+    return {
+      fr: '❌ Format non supporté. Envoyez une image JPG, PNG, GIF ou WebP.',
+      ar: '❌ صيغة غير مدعومة. أرسل صورة JPG أو PNG.',
+      en: '❌ Unsupported format. Send a JPG, PNG, GIF or WebP image.',
+    }[lang] || '❌ Format non supporté.';
   }
 
-  // Détecter le contexte du graphique
-  const txt = (userText || '') + ' ' + file.name;
-  const context = /lstm|prevision|prévision|humidite|humidité|temperature|température/i.test(txt)
-    ? 'lstm' : 'default';
+  // Vérifier la taille (~5 Mo max en base64 = ~7M chars)
+  if (imageB64.length > 7_000_000) {
+    return {
+      fr: '❌ Image trop grande (max 5 Mo). Réduisez la taille de l\'image.',
+      ar: '❌ الصورة كبيرة جداً (أقصى 5 ميغابايت).',
+      en: '❌ Image too large (max 5 MB). Please reduce image size.',
+    }[lang] || '❌ Image trop grande.';
+  }
 
-  // Question par défaut selon la langue
-  const defaultQ = {
-    fr: 'Explique-moi ce graphique en détail pour que tout le monde comprenne. Que dois-je faire ?',
-    ar: 'اشرح لي هذا المخطط بالتفصيل حتى يفهمه الجميع. ماذا يجب أن أفعل؟',
-    en: 'Explain this graph in detail so everyone can understand. What should I do?'
-  }[lang] || 'Explique ce graphique.';
+  // Construire le contenu multimodal pour Claude
+  const userContent = [
+    {
+      type: 'image',
+      source: { type: 'base64', media_type: imageType, data: imageB64 }
+    },
+    {
+      type: 'text',
+      text: userText || 'Analyse cette image agricole et donne des recommandations pratiques détaillées.'
+    }
+  ];
 
-  const question = (userText || defaultQ).trim();
-
-  // Afficher animation chargement
-  const tyBubble = document.querySelector('.typing-bubble');
-  if (tyBubble) tyBubble.innerHTML = '🧠 Analyse visuelle en cours…';
+  // Ajouter à l'historique (version texte pour le contexte futur)
+  const histEntry = { role: 'user', content: userContent };
+  _chatHistory.push(histEntry);
+  if (_chatHistory.length > 20) _chatHistory = _chatHistory.slice(-20);
 
   try {
-    // Convertir image en base64 (sans le préfixe data:...)
-    const base64 = await new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload  = () => res(r.result.split(',')[1]); // Uniquement les données après la virgule
-      r.onerror = () => rej(new Error('Lecture image échouée'));
-      r.readAsDataURL(file);
-    });
+    const userName = CURRENT_USER
+      ? ((CURRENT_USER.prenom || '') + ' ' + (CURRENT_USER.nom || '')).trim()
+      : '';
 
-    const mediaType = file.type || 'image/jpeg';
-
-    // Appel au nouvel endpoint dédié (propre, sans conflit de session)
-    const resp = await fetch('api/analyse_image.php', {
+    const r = await fetch('api/chat.php', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        image:      base64,
-        media_type: mediaType,
-        question:   question,
-        lang:       lang,
-        context:    context,
-      })
+        messages:  _chatHistory,
+        lang:      lang,
+        role:      (typeof state !== 'undefined') ? state.role : 'admin',
+        user_name: userName,
+      }),
     });
 
-    if (!resp.ok) {
-      throw new Error('Serveur HTTP ' + resp.status);
+    if (!r.ok) {
+      throw new Error('Serveur HTTP ' + r.status);
     }
 
-    const rawText = await resp.text();
+    const rawText = await r.text();
     let d;
     try {
       d = JSON.parse(rawText);
     } catch(pe) {
       console.error('[AgroBot] Réponse non-JSON:', rawText.substring(0, 200));
-      throw new Error('Réponse PHP invalide');
+      throw new Error('Réponse PHP invalide — vérifiez api/chat.php');
     }
 
-    if (d.success && d.reply) {
-      const summaryText = '[Image: ' + file.name + '] ' + question;
-      _chatHistory.push({ role: 'user',      content: summaryText });
-      _chatHistory.push({ role: 'assistant', content: d.reply });
-      return d.reply;
+    if (!d.success) {
+      // Remplacer l'entrée d'historique par une version textuelle
+      _chatHistory[_chatHistory.length - 1] = {
+        role: 'user',
+        content: `[Image: ${imageName}] ${userText || ''}`
+      };
+      throw new Error(d.message || 'Erreur API');
     }
 
-    throw new Error(d.message || 'Erreur API');
+    // Remplacer dans l'historique par une version textuelle (évite de renvoyer base64 à chaque fois)
+    _chatHistory[_chatHistory.length - 1] = {
+      role: 'user',
+      content: `[Image analysée: ${imageName}] ${userText || ''}`
+    };
+
+    const reply = d.reply || '';
+    _chatHistory.push({ role: 'assistant', content: reply });
+    return reply;
 
   } catch(e) {
-    console.error('[AgroBot] Image analysis error:', e.message);
-    // Fallback LSTM local si API indisponible
-    if (context === 'lstm') return _expliqueLSTMLocal(lang);
-    return lang === 'ar'
-      ? '⚠️ خطأ: ' + e.message
-      : '⚠️ Erreur analyse image: ' + e.message;
+    console.error('[AgroBot] Erreur image:', e.message);
+    // Retirer l'entrée d'historique si erreur
+    _chatHistory.pop();
+
+    // Fallback explicatif
+    const fallbacks = {
+      fr: `🖼️ **Image reçue :** \`${imageName}\`\n\n⚠️ Analyse IA impossible : ${e.message}\n\n**Vérifiez :**\n- XAMPP est démarré ✓\n- \`api/chat.php\` existe dans le dossier ✓\n- Votre clé Anthropic est configurée dans \`chat.php\` ✓\n\n**En attendant**, décrivez ce que vous voyez sur l'image et je vous aide.`,
+      ar: `🖼️ **تم استلام الصورة:** \`${imageName}\`\n\n⚠️ خطأ في التحليل : ${e.message}\n\nتأكد من أن XAMPP يعمل وأن المفتاح Anthropic مُعدَّل في \`api/chat.php\`.`,
+      en: `🖼️ **Image received:** \`${imageName}\`\n\n⚠️ Analysis failed: ${e.message}\n\n**Check:** XAMPP running ✓, \`api/chat.php\` exists ✓, Anthropic key configured ✓\n\n**Meanwhile**, describe what you see and I'll help.`,
+    };
+    return fallbacks[lang] || fallbacks.fr;
   }
-}
-
-/* ── Explication LSTM locale (si API indisponible) ── */
-function _expliqueLSTMLocal(lang) {
-  if (lang === 'ar') return `**🌾 تفسير مخطط LSTM**
-
-📊 **ما يُظهره المخطط:**
-- **الخط الرمادي** = قياسات الأيام السابقة (ما حدث فعلاً)
-- **الخط البنفسجي/البرتقالي** = توقعات الـ 7 أيام القادمة
-- **الخط المنقط الأصفر** = الحد الحرج (35% رطوبة التربة)
-- **الخط الأخضر** = اليوم
-
-💡 **ماذا يعني ذلك؟** إذا انخفض الخط البنفسجي تحت الخط الأصفر → يجب الري فوراً.`;
-
-  if (lang === 'en') return `**🌾 LSTM Graph Explanation**
-
-📊 **What the graph shows:**
-- **Gray line** = past measurements (what actually happened)
-- **Purple/orange line** = next 7 days prediction
-- **Yellow dashed line** = critical threshold (35% soil moisture)
-- **Green line** = today
-
-💡 **What to do:** If the purple line goes below the yellow line → irrigate immediately.`;
-
-  return `**🌾 Explication du graphique LSTM**
-
-📊 **Ce que montre le graphique :**
-- **Ligne grise** = mesures des jours passés (ce qui s'est passé réellement)
-- **Ligne violette/orange** = prévision sur les 7 prochains jours
-- **Ligne pointillée jaune** = seuil critique (35% humidité sol)
-- **Ligne verte** = aujourd'hui (maintenant)
-
-💡 **À retenir simplement :** Si la ligne violette descend sous la ligne jaune → irriguer immédiatement !`;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -273,24 +245,24 @@ const _KB = [
     en:`📡 **IoT — ESP32 + LoRaWAN**\n\n- 6 nodes, readings every **10 seconds**\n- Range: **15 km** | Battery: **287 days**` },
 
   { k:['ph','acide','alcalin','chaux','soufre','sol','engrais','npk','azote','phosphore','potassium'],
-    fr:`🧪 **Sol & Fertilisation**\n\n- 🔴 pH < 5.5 → Chaux : 500-1000 kg/ha\n- 🔵 pH > 7.5 → Soufre : 50 kg/ha\n- ✅ pH idéal : 6.0–7.0\n- N < 40 → Urée 46% (80-120 kg/ha)\n- P < 25 → Superphosphate | K < 30 → Sulfate potasse`,
-    ar:`🧪 **التربة والتسميد**\n\n- 🔴 pH < 5.5 → جير: 500-1000 كغ/هكتار\n- ✅ pH مثالي: 6.0–7.0\n- N < 40 → يوريا 46%`,
-    en:`🧪 **Soil & Fertilization**\n\n- 🔴 pH < 5.5 → Lime: 500-1000 kg/ha\n- 🔵 pH > 7.5 → Sulfur: 50 kg/ha\n- ✅ Ideal pH: 6.0–7.0` },
+    fr:`🧪 **Sol & Fertilisation**\n\n- 🔴 pH < 5.5 → Chaux : 500–1000 kg/ha\n- 🔵 pH > 7.5 → Soufre : 50 kg/ha\n- ✅ pH idéal : 6.0–7.0\n- N < 40 → Urée 46% (80–120 kg/ha)\n- P < 25 → Superphosphate | K < 30 → Sulfate potasse`,
+    ar:`🧪 **التربة والتسميد**\n\n- 🔴 pH < 5.5 → جير: 500–1000 كغ/هكتار\n- ✅ pH مثالي: 6.0–7.0\n- N < 40 → يوريا 46%`,
+    en:`🧪 **Soil & Fertilization**\n\n- 🔴 pH < 5.5 → Lime: 500–1000 kg/ha\n- 🔵 pH > 7.5 → Sulfur: 50 kg/ha\n- ✅ Ideal pH: 6.0–7.0` },
 
   { k:['irrigu','humidité sol','arros','eau','sec','quand irriguer','when to water'],
-    fr:`💧 **Irrigation**\n\n- 🔴 < 20% → Irriguer maintenant (urgence !)\n- 🟡 20-35% → Irriguer sous 24-48h\n- ✅ 35-70% → Optimal\n- 🌊 > 85% → Vérifiez le drainage\n\n**Astuce :** Irriguer tôt le matin réduit l'évaporation de 30%`,
-    ar:`💧 **الري**\n\n- 🔴 أقل من 20% → ري عاجل!\n- 🟡 20-35% → اسقِ خلال 24-48 ساعة\n- ✅ 35-70% → مثالي`,
-    en:`💧 **Irrigation**\n\n- 🔴 < 20% → Irrigate immediately!\n- 🟡 20-35% → Irrigate within 24-48h\n- ✅ 35-70% → Optimal` },
+    fr:`💧 **Irrigation**\n\n- 🔴 < 20% → Irriguer maintenant (urgence !)\n- 🟡 20–35% → Irriguer sous 24–48h\n- ✅ 35–70% → Optimal\n- 🌊 > 85% → Vérifiez le drainage\n\n**Astuce :** Irriguer tôt le matin réduit l'évaporation de 30%`,
+    ar:`💧 **الري**\n\n- 🔴 أقل من 20% → ري عاجل!\n- 🟡 20–35% → اسقِ خلال 24–48 ساعة\n- ✅ 35–70% → مثالي`,
+    en:`💧 **Irrigation**\n\n- 🔴 < 20% → Irrigate immediately!\n- 🟡 20–35% → Irrigate within 24–48h\n- ✅ 35–70% → Optimal` },
 
   { k:['alerte','alert','alarme','warning'],
     fr:`⚠️ **Alertes AgriSmart**\n\n- 🔴 CRIT — Situation critique\n- 🟡 WARN — Avertissement\n- 🟢 OK — Normal\n\n👉 Tableau de bord → section **Alertes**`,
-    ar:`⚠️ **تنبيهات AgriSmart**\n\n- 🔴 حرج | 🟡 تحذير | 🟢 طبيعي\n\n👉 لوحة التحكم → **التنبيهات**`,
-    en:`⚠️ **AgriSmart Alerts**\n\n- 🔴 CRIT | 🟡 WARN | 🟢 OK\n\n👉 Dashboard → **Alerts** section` },
+    ar:`⚠️ **تنبيهات AgriSmart**\n\n- 🔴 حرج | 🟡 تحذير | 🟢 طبيعي`,
+    en:`⚠️ **AgriSmart Alerts**\n\n- 🔴 CRIT | 🟡 WARN | 🟢 OK` },
 
   { k:['bonjour','bonsoir','salut','hello','salam','مرحبا','أهلا','hi ','aide','help','qui es-tu'],
-    fr:`🌿 **Bonjour ! Je suis AgroBot 🤖**\n\nAssistant IA d'AgriSmart — agriculture de précision.\n\nJe peux vous aider sur :\n- 🌲 Recommandation culture (Random Forest)\n- 📈 Prévisions 7 jours (LSTM)\n- 📡 Capteurs IoT\n- 🧪 Correction sol (pH, NPK)\n- 💧 Irrigation\n- ⚠️ Alertes\n\n**Posez votre question ! 🌾**`,
-    ar:`🌿 **مرحباً! أنا AgroBot 🤖**\n\nمساعد ذكاء اصطناعي لـ AgriSmart.\n\nيمكنني مساعدتك في:\n- 🌲 توصية المحصول | 📈 توقعات 7 أيام\n- 📡 IoT | 🧪 التربة | 💧 الري`,
-    en:`🌿 **Hello! I'm AgroBot 🤖**\n\nAgriSmart AI assistant.\n\nI can help with:\n- 🌲 Crop recommendation | 📈 7-day forecasts\n- 📡 IoT sensors | 🧪 Soil | 💧 Irrigation` },
+    fr:`🌿 **Bonjour ! Je suis AgroBot 🤖**\n\nAssistant IA d'AgriSmart — agriculture de précision.\n\nJe peux vous aider sur :\n- 🌲 Recommandation culture (Random Forest)\n- 📈 Prévisions 7 jours (LSTM)\n- 📡 Capteurs IoT\n- 🧪 Correction sol (pH, NPK)\n- 💧 Irrigation\n- 🖼️ Analyse d'images agricoles (bouton 📎)\n\n**Posez votre question ! 🌾**`,
+    ar:`🌿 **مرحباً! أنا AgroBot 🤖**\n\nمساعد ذكاء اصطناعي لـ AgriSmart.\n\nيمكنني مساعدتك في:\n- 🌲 توصية المحصول | 📈 توقعات 7 أيام\n- 📡 IoT | 🧪 التربة | 💧 الري\n- 🖼️ تحليل الصور الزراعية`,
+    en:`🌿 **Hello! I'm AgroBot 🤖**\n\nAgriSmart AI assistant.\n\nI can help with:\n- 🌲 Crop recommendation | 📈 7-day forecasts\n- 📡 IoT sensors | 🧪 Soil | 💧 Irrigation\n- 🖼️ Agricultural image analysis (📎 button)` },
 ];
 
 function _norm(s) {
@@ -313,9 +285,9 @@ function _fallbackLocal(question) {
   if (best && bestScore > 0) return best[lang] || best.fr;
 
   const generic = {
-    fr: `🌿 **AgroBot** — Je suis là pour vous aider !\n\n- 🌲 Recommandation culture (RF)\n- 📈 Prévisions LSTM 7j\n- 📡 Capteurs IoT\n- 🧪 Sol & pH & NPK\n- 💧 Irrigation\n\nPosez une question spécifique ou cliquez sur un bouton ci-dessous. 🌾`,
-    ar: `🌿 **AgroBot** — أنا هنا لمساعدتك!\n\n- 🌲 توصية المحصول | 📈 LSTM\n- 📡 IoT | 🧪 التربة | 💧 الري\n\nاسأل سؤالاً محدداً! 🌾`,
-    en: `🌿 **AgroBot** — I'm here to help!\n\n- 🌲 Crop recommendation | 📈 LSTM\n- 📡 IoT | 🧪 Soil | 💧 Irrigation\n\nAsk a specific question! 🌾`,
+    fr: `🌿 **AgroBot** — Mode hors-ligne (XAMPP non démarré)\n\n- 🌲 Recommandation culture (RF)\n- 📈 Prévisions LSTM 7j\n- 📡 Capteurs IoT\n- 🧪 Sol & pH & NPK\n- 💧 Irrigation\n\nPosez une question spécifique ! 🌾`,
+    ar: `🌿 **AgroBot** — وضع غير متصل\n\n- 🌲 توصية المحصول | 📈 LSTM\n- 📡 IoT | 🧪 التربة | 💧 الري\n\nاسأل سؤالاً محدداً! 🌾`,
+    en: `🌿 **AgroBot** — Offline mode (XAMPP not running)\n\n- 🌲 Crop recommendation | 📈 LSTM\n- 📡 IoT | 🧪 Soil | 💧 Irrigation\n\nAsk a specific question! 🌾`,
   };
   return generic[lang] || generic.fr;
 }
@@ -341,9 +313,9 @@ function setChatLang(lang) {
   if (sub) {
     const dot = `<span style="width:7px;height:7px;border-radius:50%;background:#86efac;display:inline-block;box-shadow:0 0 5px #86efac;flex-shrink:0;"></span>`;
     const subs = {
-      fr: `${dot} Claude AI · FR / AR / EN · 🎤`,
-      ar: `${dot} Claude AI · عربي / FR / EN · 🎤`,
-      en: `${dot} Claude AI · FR / AR / EN · 🎤`,
+      fr: `${dot} Claude AI · FR / AR / EN · 🎤 · 📷`,
+      ar: `${dot} Claude AI · عربي / FR / EN · 🎤 · 📷`,
+      en: `${dot} Claude AI · FR / AR / EN · 🎤 · 📷`,
     };
     sub.innerHTML = subs[lang] || subs.fr;
   }
@@ -597,8 +569,15 @@ function ajouterMessage(role, text, typing = false, rawHtml = false) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   PIÈCES JOINTES
+   GESTION PIÈCES JOINTES / IMAGES
+   ─────────────────────────────────────────────────────
+   Flux corrigé :
+   1. onFileSelected() → lit le File, stocke dans _pendingImageB64/Type/Name
+   2. Affiche une preview dans le chat
+   3. envoyerChat() détecte _pendingImageB64 → appelle _callClaudeWithImage()
+   4. _callClaudeWithImage() envoie en multimodal vers chat.php
 ═══════════════════════════════════════════════════════ */
+
 function ouvrirAttachement() {
   const inp = document.getElementById('chat-file-input');
   if (inp) inp.click();
@@ -607,133 +586,149 @@ function ouvrirAttachement() {
 function onFileSelected(input) {
   const file = input.files?.[0];
   if (!file) return;
-  if (file.size > 10 * 1024 * 1024) {
-    showNotif('⚠️ Fichier trop lourd (max 10Mo)');
+
+  // Seulement les images (chat.php gère le multimodal image)
+  if (!file.type.startsWith('image/')) {
+    showNotif('⚠️ Seules les images sont supportées (JPG, PNG, GIF, WebP)');
     input.value = '';
     return;
   }
-  _attachedFile = file;
-  _afficherPreviewAttachement(file);
+
+  if (file.size > 5 * 1024 * 1024) {
+    showNotif('❌ Image trop grande (max 5 Mo)');
+    input.value = '';
+    return;
+  }
+
+  // Lire et stocker en base64
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    _pendingImageB64  = dataUrl.split(',')[1];  // uniquement les données, sans "data:image/...;base64,"
+    _pendingImageType = file.type;
+    _pendingImageName = file.name;
+    _afficherPreviewImage(dataUrl, file.name, file.size);
+    showNotif('📷 Image prête — appuyez sur ➤ pour envoyer');
+  };
+  reader.onerror = () => {
+    showNotif('❌ Impossible de lire l\'image');
+  };
+  reader.readAsDataURL(file);
   input.value = '';
 }
 
-function _afficherPreviewAttachement(file) {
-  let preview = document.getElementById('chat-attach-preview');
-  if (!preview) {
-    preview = document.createElement('div');
-    preview.id = 'chat-attach-preview';
-    preview.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;margin:0 12px 0;background:#EAF3DE;border:1.5px solid rgba(90,138,48,.2);border-radius:10px;font-size:12px;color:#2D5016;flex-shrink:0;';
-    const row = document.querySelector('.chat-input-row');
-    if (row) row.parentNode.insertBefore(preview, row);
-  }
-  const isImage = file.type.startsWith('image/');
-  const size = (file.size / 1024).toFixed(0);
-  if (isImage) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      preview.innerHTML = `<img src="${e.target.result}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">
-        <div style="flex:1;min-width:0;"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${file.name}</div>
-        <div style="font-size:10px;opacity:.7;">📎 Prêt · ${size} Ko</div></div>
-        <button onclick="supprimerAttachement()" style="background:none;border:none;cursor:pointer;color:#B03030;font-size:16px;">✕</button>`;
-    };
-    reader.readAsDataURL(file);
+function _afficherPreviewImage(dataUrl, fileName, fileSize) {
+  // Supprimer ancienne preview si existe
+  supprimerAttachement();
+
+  const preview = document.createElement('div');
+  preview.id = 'chat-attach-preview';
+  preview.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;margin:0 12px 4px;background:#EAF3DE;border:1.5px solid rgba(90,138,48,.25);border-radius:10px;font-size:12px;color:#2D5016;flex-shrink:0;';
+
+  const sizeKo = Math.round(fileSize / 1024);
+  preview.innerHTML = `
+    <img src="${dataUrl}" style="width:38px;height:38px;object-fit:cover;border-radius:7px;border:1px solid rgba(90,138,48,.3);">
+    <div style="flex:1;min-width:0;">
+      <div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fileName}</div>
+      <div style="font-size:10px;opacity:.7;">📎 ${sizeKo} Ko · Prêt à envoyer</div>
+    </div>
+    <button onclick="supprimerAttachement()" style="background:none;border:none;cursor:pointer;color:#B03030;font-size:18px;padding:2px 6px;border-radius:6px;line-height:1;" title="Annuler">✕</button>`;
+
+  const row = document.getElementById('chat-input-row-wrap');
+  if (row) {
+    row.parentNode.insertBefore(preview, row);
   } else {
-    preview.innerHTML = `<span style="font-size:22px;">📎</span>
-      <div style="flex:1;min-width:0;"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${file.name}</div>
-      <div style="font-size:10px;opacity:.7;">Prêt · ${size} Ko</div></div>
-      <button onclick="supprimerAttachement()" style="background:none;border:none;cursor:pointer;color:#B03030;font-size:16px;">✕</button>`;
+    // fallback: insérer avant la zone de saisie
+    const win = document.getElementById('chat-window');
+    if (win) win.appendChild(preview);
   }
 }
 
 function supprimerAttachement() {
-  _attachedFile = null;
+  _pendingImageB64  = null;
+  _pendingImageType = null;
+  _pendingImageName = null;
+  _attachedFile     = null;
   const preview = document.getElementById('chat-attach-preview');
   if (preview) preview.remove();
 }
 
-function _fileToBase64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload  = () => res(r.result.split(',')[1]);
-    r.onerror = () => rej(new Error('Lecture fichier échouée'));
-    r.readAsDataURL(file);
-  });
-}
-
-function _afficherBulleAvecFichier(texte, file) {
-  const isImage = file.type.startsWith('image/');
-  if (isImage) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const html = `<img src="${e.target.result}" style="max-width:200px;max-height:150px;border-radius:8px;display:block;margin-bottom:${texte ? '6px' : '0'}">${texte ? `<span>${texte}</span>` : ''}`;
-      ajouterMessage('user', html, false, true);
-    };
-    reader.readAsDataURL(file);
-  } else {
-    const html = `<div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border-radius:8px;padding:5px 8px;max-width:200px;overflow:hidden;">📎 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;">${file.name}</span></div>${texte ? `<span>${texte}</span>` : ''}`;
-    ajouterMessage('user', html, false, true);
-  }
-}
-
-function _analyserFichierLocal(file, userText, lang) {
-  const isImage = file.type.startsWith('image/');
-  const size = (file.size / 1024).toFixed(0);
-  if (isImage) {
-    return {
-      fr: `🖼️ **Image reçue :** \`${file.name}\` (${size} Ko)\n\nPour analyser automatiquement cette photo avec l'IA, XAMPP doit être démarré et l'API configurée dans \`api/chat.php\`.\n\n**En attendant :** Décrivez ce que vous voyez sur la photo !`,
-      ar: `🖼️ **تم استلام الصورة:** \`${file.name}\`\n\nلتحليلها تلقائياً، يجب أن يعمل XAMPP وأن يكون API مُعدَّلاً.\n\n**في الوقت الحالي:** صف ما تراه!`,
-      en: `🖼️ **Image received:** \`${file.name}\` (${size} KB)\n\nTo auto-analyze this photo, XAMPP must be running and API configured in \`api/chat.php\`.\n\n**For now:** Describe what you see!`,
-    }[lang];
-  }
-  return {
-    fr: `📎 **Fichier reçu :** \`${file.name}\` (${size} Ko)\n\nDécrivez le contenu ou posez une question spécifique sur ce fichier.`,
-    ar: `📎 **تم استلام الملف:** \`${file.name}\`\n\nصف المحتوى أو اطرح سؤالاً محدداً.`,
-    en: `📎 **File received:** \`${file.name}\` (${size} KB)\n\nDescribe the content or ask a specific question about this file.`,
-  }[lang];
+/* ─── Afficher la bulle utilisateur avec image ─── */
+function _afficherBulleImage(dataUrl, fileName, texte) {
+  const html = `
+    <img src="${dataUrl}" style="max-width:180px;max-height:140px;border-radius:9px;display:block;margin-bottom:${texte ? '6px' : '0'};border:1px solid rgba(255,255,255,.3);">
+    ${texte ? `<span>${texte}</span>` : ''}`;
+  ajouterMessage('user', html, false, true);
 }
 
 /* ═══════════════════════════════════════════════════════
-   ENVOYER MESSAGE
+   ENVOYER MESSAGE — flux principal unifié
 ═══════════════════════════════════════════════════════ */
 async function envoyerChat() {
   const inp  = document.getElementById('chat-input');
   const send = document.getElementById('chat-send');
-  const q    = inp?.value?.trim();
-  const file = _attachedFile;
+  const q    = inp?.value?.trim() || '';
 
-  if (!q && !file) return;
+  const hasImage = !!_pendingImageB64;
+  const hasText  = q.length > 0;
 
-  inp.value = '';
-  inp.style.height = 'auto';
+  if (!hasImage && !hasText) return;
+
+  // Désactiver le bouton
   if (send) send.disabled = true;
+  if (inp) { inp.value = ''; inp.style.height = 'auto'; }
+
   const quick = document.getElementById('chat-quick');
   if (quick) quick.style.display = 'none';
 
-  const detectedLang = _detectLang(q || '');
+  const detectedLang = _detectLang(q);
 
-  if (file) {
-    _afficherBulleAvecFichier(q, file);
+  let reply;
+
+  if (hasImage) {
+    // ── CAS IMAGE : afficher la bulle avec preview ──
+    // Reconstruire dataUrl pour affichage
+    const previewImg = document.querySelector('#chat-attach-preview img');
+    const displayUrl = previewImg ? previewImg.src : `data:${_pendingImageType};base64,${_pendingImageB64}`;
+
+    _afficherBulleImage(displayUrl, _pendingImageName, q);
+
+    // Sauvegarder les infos avant de les effacer
+    const b64   = _pendingImageB64;
+    const type  = _pendingImageType;
+    const name  = _pendingImageName;
+
+    // Supprimer la preview immédiatement
     supprimerAttachement();
-  } else {
-    ajouterMessage('user', q);
-  }
 
-  const tyBubble = ajouterMessage('bot', '', true);
+    // Indicateur de frappe
+    const tyBubble = ajouterMessage('bot', '', true);
 
-  try {
-    let rep;
-    if (file) {
-      rep = await _callClaudeWithFile(q, file);
-    } else {
-      rep = await _callClaude(q);
+    try {
+      reply = await _callClaudeWithImage(q, b64, type, name);
+    } catch(e) {
+      reply = '⚠️ Erreur : ' + e.message;
     }
+
     tyBubble?.remove();
-    ajouterMessage('bot', rep);
-    _speak(rep, detectedLang);
-  } catch(e) {
+
+  } else {
+    // ── CAS TEXTE SEUL ──
+    ajouterMessage('user', q);
+    const tyBubble = ajouterMessage('bot', '', true);
+
+    try {
+      reply = await _callClaude(q);
+    } catch(e) {
+      reply = '⚠️ Erreur : ' + e.message;
+    }
+
     tyBubble?.remove();
-    ajouterMessage('bot', `⚠️ Erreur : ${e.message}`);
   }
+
+  // Afficher la réponse
+  ajouterMessage('bot', reply);
+  _speak(reply, detectedLang);
 
   if (send) send.disabled = false;
   inp?.focus();
@@ -750,6 +745,7 @@ function envoyerQuestion(q) {
 ═══════════════════════════════════════════════════════ */
 function clearChat() {
   _chatHistory = []; chatFirstOpen = true;
+  supprimerAttachement();
   const msgs = document.getElementById('chat-messages');
   if (msgs) msgs.innerHTML = '';
   const quick = document.getElementById('chat-quick');
@@ -816,9 +812,9 @@ function toggleChat() {
           : { fr:'⚠️ Mode hors-ligne (XAMPP)', ar:'⚠️ وضع غير متصل', en:'⚠️ Offline mode (XAMPP)' };
 
         const greetings = {
-          fr: `🌿 **Bonjour${user ? ' ' + user : ''} !** Je suis **AgroBot**, votre assistant IA.\n\n${dot}${statusMsg.fr}\n\n💬 Posez n'importe quelle question agricole ou cliquez sur un bouton. 🌾`,
-          ar: `🌿 **مرحباً${user ? ' ' + user : ''} !** أنا **AgroBot** مساعدك الزراعي.\n\n${dot}${statusMsg.ar}\n\n💬 اسألني أي شيء! 🌾`,
-          en: `🌿 **Hello${user ? ' ' + user : ''} !** I'm **AgroBot**, your AI assistant.\n\n${dot}${statusMsg.en}\n\n💬 Ask me anything about farming! 🌾`,
+          fr: `🌿 **Bonjour${user ? ' ' + user : ''} !** Je suis **AgroBot**, votre assistant IA AgriSmart.\n\n${dot}${statusMsg.fr}\n\n📷 Vous pouvez m'envoyer une **image** (bouton 📎) pour que je l'analyse.\n\n💬 Posez n'importe quelle question agricole ou cliquez sur un bouton. 🌾`,
+          ar: `🌿 **مرحباً${user ? ' ' + user : ''} !** أنا **AgroBot** مساعدك الزراعي.\n\n${dot}${statusMsg.ar}\n\n📷 يمكنك إرسال **صورة** (زر 📎) لتحليلها.\n\n💬 اسألني أي شيء! 🌾`,
+          en: `🌿 **Hello${user ? ' ' + user : ''} !** I'm **AgroBot**, your AgriSmart AI assistant.\n\n${dot}${statusMsg.en}\n\n📷 You can send an **image** (📎 button) for analysis.\n\n💬 Ask me anything about farming! 🌾`,
         };
         const msg = greetings[_chatLang] || greetings.fr;
         ajouterMessage('bot', msg);
@@ -890,83 +886,9 @@ async function loadDashboardStats() {
 async function addAlertManual(type, titre, desc, nodeId = '') {
   return await apiCall('alerte_add', 'POST', { type, titre, description: desc, node_id: nodeId });
 }
-function handleImageSelect(input) {
-  const file = input.files[0];
-  if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { showNotif('❌ Image trop grande (max 5 Mo)'); input.value=''; return; }
-  
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    pendingImageB64  = e.target.result.split(',')[1];
-    pendingImageType = file.type;
-    pendingImageName = file.name;
-    // Afficher aperçu
-    document.getElementById('preview-img').src = e.target.result;
-    document.getElementById('preview-name').textContent = `📎 ${file.name} (${Math.round(file.size/1024)} Ko)`;
-    document.getElementById('chat-image-preview').style.display = 'flex';
-    showNotif('📷 Image prête — appuyez sur Envoyer');
-  };
-  reader.readAsDataURL(file);
-  input.value = '';
-} 
-async function sendChatMessage() {
-  if (chatIsTyping) return;
-  const input    = document.getElementById('chat-input');
-  const userText = (input?.value || '').trim();
-  if (!userText && !pendingImageB64) return;
 
-  let userContent;
-  if (pendingImageB64) {
-    userContent = [
-      { type: 'image', source: { type: 'base64', media_type: pendingImageType, data: pendingImageB64 } },
-      { type: 'text',  text: userText || 'Analyse cette image agricole et donne tes recommandations.' }
-    ];
-    appendRawMessage('user', `🖼️ <strong>${pendingImageName}</strong>${userText ? '<br>'+userText : ''}`);
-    document.getElementById('chat-image-preview').style.display = 'none';
-  } else {
-    userContent = userText;
-    appendRawMessage('user', userText);
-  }
-
-  if (input) input.value = '';
-  const hadImage = !!pendingImageB64;
-  const imgName  = pendingImageName;
-  pendingImageB64 = pendingImageType = pendingImageName = null;
-
-  chatHistory.push({ role: 'user', content: userContent });
-  chatIsTyping = true;
-  appendTypingIndicator();
-
-  try {
-    const res  = await fetch('api/chat.php', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ messages: chatHistory, lang: currentLang||'fr', role: state?.role||'admin' })
-    });
-    removeTypingIndicator();
-    chatIsTyping = false;
-    const data = await res.json();
-
-    if (data.success && data.reply) {
-      if (hadImage) {
-        chatHistory[chatHistory.length-1] = { role:'user', content:`[Image: ${imgName}] ${userText||''}` };
-      }
-      chatHistory.push({ role:'assistant', content: data.reply });
-      appendMessage('assistant', data.reply);
-    } else {
-      appendMessage('assistant', `⚠️ ${data.message||'Erreur.'}`);
-      chatHistory.pop();
-    }
-  } catch(err) {
-    removeTypingIndicator(); chatIsTyping = false;
-    appendMessage('assistant', `🌐 Erreur réseau : ${err.message}`);
-    chatHistory.pop();
-  }
-} function annulerImage() {
-  pendingImageB64 = pendingImageType = pendingImageName = null;
-  document.getElementById('chat-image-preview').style.display = 'none';
-}
 /* ═══════════════════════════════════════════════════════
-   VISIBILITÉ CHATBOT
+   VISIBILITÉ CHATBOT — observer screen-app / screen-login
 ═══════════════════════════════════════════════════════ */
 (function _watchAppScreen() {
   function _check() {

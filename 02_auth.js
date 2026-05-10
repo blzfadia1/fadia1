@@ -1,10 +1,11 @@
 /* ════════════════════════════════════════════════════════════════
    AgriSmart — 02_auth.js
    ✅ Login / Logout avec sessions PHP
-   ✅ NOUVEAU : Mot de passe oublié (3 étapes)
-      Étape 1 — Saisie login → génération token
-      Étape 2 — Affichage token (copier/coller)
-      Étape 3 — Saisie nouveau mot de passe
+   ✅ Mot de passe oublié (3 étapes)
+   ✅ NOUVEAU : Validation nouveau MDP par email obligatoire
+      → L'utilisateur DOIT saisir son email admin
+      → Un code de confirmation à 6 chiffres est envoyé
+      → Il doit saisir le code pour valider le changement
    Fichier : 02_auth.js
 ════════════════════════════════════════════════════════════════ */
 
@@ -70,7 +71,6 @@ async function doLogin() {
   } catch (e) {
     btn.disabled    = false;
     btn.textContent = '🔐 Se connecter';
-    // Fallback hors-ligne
     const fallback = {
       admin:      { login:'admin',      nom:'Administrateur', prenom:'Admin', role:'admin',       avatar:'A', badgeClass:'badge-admin', badgeLabel:'ADMIN' },
       ahmed:      { login:'ahmed',      nom:'Ahmed Benali',   prenom:'Ahmed', role:'agriculteur', avatar:'A', badgeClass:'badge-agri',  badgeLabel:'AGRICULTEUR' },
@@ -119,14 +119,17 @@ async function doLogout() {
 }
 
 /* ════════════════════════════════════════════════════════════
-   MOT DE PASSE OUBLIÉ — 3 étapes dans une modale premium
+   MOT DE PASSE OUBLIÉ — 4 étapes
+   Étape 1 : Saisie identifiant → génération token
+   Étape 2 : Affichage token + SAISIE EMAIL ADMIN obligatoire
+             → envoi code de confirmation 6 chiffres
+   Étape 3 : Saisie code reçu par email + nouveau mot de passe
+   Étape 4 : Succès
 ════════════════════════════════════════════════════════════ */
 
-// ── Injecter la modale dans le DOM au chargement ──────────
 (function _injectForgotModal() {
 
   const css = `
-    /* ── Overlay ── */
     #forgot-overlay {
       display: none;
       position: fixed;
@@ -142,20 +145,20 @@ async function doLogout() {
     #forgot-overlay.open { display: flex; }
     @keyframes fadeInOv { from { opacity:0; } to { opacity:1; } }
 
-    /* ── Boîte ── */
     #forgot-box {
       background: #0F1A0F;
       border: 1px solid rgba(122,181,53,.25);
       border-radius: 20px;
       width: 100%;
-      max-width: 420px;
+      max-width: 440px;
       overflow: hidden;
       box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(122,181,53,.1);
       animation: slideUpBox .28s cubic-bezier(.34,1.56,.64,1);
+      max-height: 92vh;
+      overflow-y: auto;
     }
     @keyframes slideUpBox { from { opacity:0; transform:translateY(24px) scale(.97); } to { opacity:1; transform:none; } }
 
-    /* ── Header ── */
     #forgot-header {
       padding: 22px 24px 18px;
       background: linear-gradient(135deg, #0A1A0A, #162416);
@@ -163,6 +166,7 @@ async function doLogout() {
       display: flex;
       align-items: center;
       gap: 12px;
+      position: sticky; top: 0; z-index: 1;
     }
     #forgot-header-icon {
       width: 40px; height: 40px;
@@ -173,35 +177,20 @@ async function doLogout() {
       box-shadow: 0 4px 12px rgba(90,138,48,.3);
       flex-shrink: 0;
     }
-    #forgot-header-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: #E8F0DC;
-      flex: 1;
-    }
-    #forgot-header-sub {
-      font-size: 11px;
-      color: rgba(255,255,255,.4);
-      margin-top: 2px;
-    }
+    #forgot-header-title { font-size: 16px; font-weight: 700; color: #E8F0DC; flex: 1; }
+    #forgot-header-sub   { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 2px; }
     #forgot-close-btn {
       width: 30px; height: 30px;
       background: rgba(255,255,255,.06);
-      border: none;
-      border-radius: 8px;
-      color: rgba(255,255,255,.4);
-      cursor: pointer;
-      font-size: 16px;
-      display: flex; align-items: center; justify-content: center;
-      transition: background .15s;
-      flex-shrink: 0;
+      border: none; border-radius: 8px;
+      color: rgba(255,255,255,.4); cursor: pointer;
+      font-size: 16px; display: flex; align-items: center; justify-content: center;
+      transition: background .15s; flex-shrink: 0;
     }
     #forgot-close-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
 
-    /* ── Steps ── */
     #forgot-steps {
       display: flex;
-      gap: 0;
       padding: 16px 24px 0;
       background: linear-gradient(135deg, #0A1A0A, #162416);
     }
@@ -216,10 +205,8 @@ async function doLogout() {
     .fg-step:not(:last-child)::after {
       content: '';
       position: absolute;
-      top: 14px;
-      left: 50%;
-      width: 100%;
-      height: 2px;
+      top: 14px; left: 50%;
+      width: 100%; height: 2px;
       background: rgba(255,255,255,.1);
     }
     .fg-step.done::after,
@@ -230,262 +217,176 @@ async function doLogout() {
       background: rgba(255,255,255,.08);
       border: 2px solid rgba(255,255,255,.15);
       display: flex; align-items: center; justify-content: center;
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 12px; font-weight: 700;
       color: rgba(255,255,255,.4);
-      z-index: 1;
-      transition: all .3s;
+      z-index: 1; transition: all .3s;
     }
-    .fg-step.active .fg-step-dot {
-      background: #2D5016;
-      border-color: #7AB535;
-      color: #C8E89A;
-      box-shadow: 0 0 12px rgba(122,181,53,.4);
-    }
-    .fg-step.done .fg-step-dot {
-      background: #5A8A30;
-      border-color: #7AB535;
-      color: #fff;
-    }
-    .fg-step-label {
-      font-size: 9.5px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      color: rgba(255,255,255,.25);
-    }
+    .fg-step.active .fg-step-dot { background:#2D5016; border-color:#7AB535; color:#C8E89A; box-shadow:0 0 12px rgba(122,181,53,.4); }
+    .fg-step.done   .fg-step-dot { background:#5A8A30; border-color:#7AB535; color:#fff; }
+    .fg-step-label  { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: rgba(255,255,255,.25); }
     .fg-step.active .fg-step-label { color: #A8D06A; }
-    .fg-step.done  .fg-step-label  { color: #7AB535; }
+    .fg-step.done   .fg-step-label { color: #7AB535; }
 
-    /* ── Body ── */
-    #forgot-body { padding: 24px; }
+    #forgot-body { padding: 22px 24px; }
 
     .fg-panel { display: none; }
     .fg-panel.active { display: block; animation: fadeInP .2s ease; }
     @keyframes fadeInP { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
 
     .fg-desc {
-      font-size: 13px;
-      color: rgba(255,255,255,.5);
-      margin-bottom: 18px;
-      line-height: 1.6;
-      font-weight: 300;
+      font-size: 13px; color: rgba(255,255,255,.5);
+      margin-bottom: 16px; line-height: 1.6; font-weight: 300;
     }
 
     .fg-field { margin-bottom: 14px; }
     .fg-field label {
-      display: block;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .6px;
-      color: rgba(255,255,255,.4);
-      margin-bottom: 6px;
+      display: block; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .6px;
+      color: rgba(255,255,255,.4); margin-bottom: 6px;
     }
     .fg-field input {
-      width: 100%;
-      padding: 11px 14px;
+      width: 100%; padding: 11px 14px;
       background: rgba(255,255,255,.06);
       border: 1.5px solid rgba(255,255,255,.1);
-      border-radius: 10px;
-      color: #E8F0DC;
-      font-size: 14px;
-      font-family: inherit;
-      outline: none;
+      border-radius: 10px; color: #E8F0DC;
+      font-size: 14px; font-family: inherit; outline: none;
       transition: border-color .2s, box-shadow .2s;
+      box-sizing: border-box;
     }
-    .fg-field input:focus {
-      border-color: #7AB535;
-      box-shadow: 0 0 0 3px rgba(122,181,53,.15);
-    }
+    .fg-field input:focus { border-color: #7AB535; box-shadow: 0 0 0 3px rgba(122,181,53,.15); }
     .fg-field input::placeholder { color: rgba(255,255,255,.2); }
 
-    /* Token display box */
+    /* Token box */
     .fg-token-box {
       background: rgba(122,181,53,.08);
       border: 1.5px solid rgba(122,181,53,.25);
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 16px;
+      border-radius: 12px; padding: 14px; margin-bottom: 16px;
     }
-    .fg-token-label {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .7px;
-      color: #7AB535;
-      margin-bottom: 8px;
-    }
+    .fg-token-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: #7AB535; margin-bottom: 8px; }
     .fg-token-value {
-      font-family: 'JetBrains Mono', 'Courier New', monospace;
-      font-size: 11px;
-      color: #C8E89A;
-      word-break: break-all;
-      letter-spacing: .5px;
-      line-height: 1.6;
-      cursor: pointer;
-      user-select: all;
+      font-family: 'JetBrains Mono','Courier New',monospace;
+      font-size: 11px; color: #C8E89A;
+      word-break: break-all; letter-spacing: .5px;
+      line-height: 1.6; cursor: pointer; user-select: all;
     }
-    .fg-token-copy {
-      margin-top: 8px;
-      font-size: 11px;
-      color: rgba(255,255,255,.35);
+    .fg-token-copy { margin-top: 8px; font-size: 11px; color: rgba(255,255,255,.35); }
+
+    /* Email section */
+    .fg-email-section {
+      background: rgba(124,58,237,.08);
+      border: 1.5px solid rgba(124,58,237,.3);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 16px;
     }
-    .fg-token-expiry {
-      font-size: 11px;
-      color: rgba(255,255,255,.35);
-      margin-top: 4px;
+    .fg-email-title {
+      font-size: 13px; font-weight: 700; color: #c4b5fd;
+      margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+    }
+    .fg-email-desc {
+      font-size: 12px; color: rgba(255,255,255,.4);
+      line-height: 1.5; margin-bottom: 12px;
+    }
+    .fg-email-input {
+      width: 100%; padding: 10px 14px;
+      background: rgba(255,255,255,.06);
+      border: 1.5px solid rgba(124,58,237,.4);
+      border-radius: 10px; color: #E8F0DC;
+      font-size: 13px; font-family: inherit;
+      outline: none; box-sizing: border-box;
+      transition: border-color .2s;
+    }
+    .fg-email-input:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.15); }
+    .fg-email-input::placeholder { color: rgba(255,255,255,.2); }
+    .fg-email-send-btn {
+      width: 100%; margin-top: 10px;
+      padding: 10px; border-radius: 8px; border: none;
+      background: linear-gradient(135deg, #4c1d95, #7c3aed);
+      color: #fff; font-size: 13px; font-weight: 600;
+      font-family: inherit; cursor: pointer;
+      transition: all .2s;
+    }
+    .fg-email-send-btn:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+    .fg-email-send-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Code de confirmation */
+    .fg-code-sent-info {
+      background: rgba(34,197,94,.08);
+      border: 1px solid rgba(34,197,94,.25);
+      border-radius: 10px; padding: 12px 14px;
+      margin-bottom: 14px; font-size: 12.5px;
+      color: #86efac; display: none;
+    }
+    .fg-code-sent-info.show { display: block; }
+
+    .fg-code-input {
+      text-align: center !important;
+      font-size: 28px !important;
+      font-weight: 700 !important;
+      letter-spacing: 8px !important;
+      font-family: 'JetBrains Mono',monospace !important;
+      color: #C8E89A !important;
     }
 
+    /* User info */
     .fg-user-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      display: flex; align-items: center; gap: 10px;
       background: rgba(255,255,255,.05);
-      border-radius: 10px;
-      padding: 10px 12px;
-      margin-bottom: 16px;
+      border-radius: 10px; padding: 10px 12px; margin-bottom: 16px;
     }
     .fg-user-avatar {
-      width: 34px; height: 34px;
-      border-radius: 9px;
+      width: 34px; height: 34px; border-radius: 9px;
       background: linear-gradient(135deg, #2D5016, #5A8A30);
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
-      font-weight: 700;
-      color: #fff;
-      flex-shrink: 0;
+      font-size: 16px; font-weight: 700; color: #fff; flex-shrink: 0;
     }
-    .fg-user-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: #E8F0DC;
-    }
-    .fg-user-sub {
-      font-size: 11px;
-      color: rgba(255,255,255,.35);
-    }
+    .fg-user-name   { font-size: 13px; font-weight: 600; color: #E8F0DC; }
+    .fg-user-sub    { font-size: 11px; color: rgba(255,255,255,.35); }
 
-    /* Password strength bar */
-    .fg-strength-bar {
-      height: 4px;
-      background: rgba(255,255,255,.08);
-      border-radius: 99px;
-      overflow: hidden;
-      margin-top: 6px;
-    }
-    .fg-strength-fill {
-      height: 100%;
-      border-radius: 99px;
-      width: 0%;
-      transition: width .3s, background .3s;
-    }
-    .fg-strength-text {
-      font-size: 10.5px;
-      margin-top: 4px;
-      font-weight: 500;
-    }
+    /* Password strength */
+    .fg-strength-bar { height: 4px; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; margin-top: 6px; }
+    .fg-strength-fill { height: 100%; border-radius: 99px; width: 0%; transition: width .3s, background .3s; }
+    .fg-strength-text { font-size: 10.5px; margin-top: 4px; font-weight: 500; }
 
-    /* Password visibility toggle */
     .fg-pass-wrap { position: relative; }
     .fg-pass-eye {
-      position: absolute;
-      right: 12px; top: 50%;
+      position: absolute; right: 12px; top: 50%;
       transform: translateY(-50%);
-      background: none; border: none;
-      cursor: pointer; font-size: 16px;
-      color: rgba(255,255,255,.3);
-      transition: color .15s;
-      padding: 0;
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; color: rgba(255,255,255,.3); transition: color .15s; padding: 0;
     }
     .fg-pass-eye:hover { color: rgba(255,255,255,.7); }
 
-    /* Success panel */
-    .fg-success {
-      text-align: center;
-      padding: 8px 0;
-    }
-    .fg-success-icon {
-      font-size: 52px;
-      margin-bottom: 12px;
-      display: block;
-      filter: drop-shadow(0 4px 12px rgba(122,181,53,.4));
-    }
-    .fg-success-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: #C8E89A;
-      margin-bottom: 6px;
-    }
-    .fg-success-sub {
-      font-size: 13px;
-      color: rgba(255,255,255,.45);
-      font-weight: 300;
-      line-height: 1.6;
-    }
+    /* Success */
+    .fg-success { text-align: center; padding: 8px 0; }
+    .fg-success-icon { font-size: 52px; margin-bottom: 12px; display: block; filter: drop-shadow(0 4px 12px rgba(122,181,53,.4)); }
+    .fg-success-title { font-size: 18px; font-weight: 700; color: #C8E89A; margin-bottom: 6px; }
+    .fg-success-sub { font-size: 13px; color: rgba(255,255,255,.45); font-weight: 300; line-height: 1.6; }
 
-    /* ── Footer buttons ── */
-    #forgot-footer {
-      padding: 0 24px 22px;
-      display: flex;
-      gap: 10px;
-    }
+    /* Footer */
+    #forgot-footer { padding: 0 24px 22px; display: flex; gap: 10px; }
     .fg-btn {
-      flex: 1;
-      padding: 12px;
-      border-radius: 10px;
-      border: none;
-      font-size: 13.5px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all .2s;
-      letter-spacing: .1px;
+      flex: 1; padding: 12px; border-radius: 10px; border: none;
+      font-size: 13.5px; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: all .2s; letter-spacing: .1px;
     }
     .fg-btn-primary {
       background: linear-gradient(135deg, #2D5016, #5A8A30);
-      color: #fff;
-      box-shadow: 0 4px 14px rgba(45,80,22,.4);
+      color: #fff; box-shadow: 0 4px 14px rgba(45,80,22,.4);
     }
-    .fg-btn-primary:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(45,80,22,.5);
-    }
-    .fg-btn-secondary {
-      background: rgba(255,255,255,.07);
-      color: rgba(255,255,255,.55);
-      border: 1px solid rgba(255,255,255,.1);
-    }
+    .fg-btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(45,80,22,.5); }
+    .fg-btn-secondary { background: rgba(255,255,255,.07); color: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.1); }
     .fg-btn-secondary:hover { background: rgba(255,255,255,.12); color: rgba(255,255,255,.8); }
     .fg-btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
 
-    /* ── Error message ── */
-    .fg-error {
-      background: rgba(176,48,48,.15);
-      border: 1px solid rgba(176,48,48,.25);
-      border-radius: 8px;
-      padding: 9px 12px;
-      font-size: 12.5px;
-      color: #fca5a5;
-      margin-bottom: 12px;
-      display: none;
-    }
+    .fg-error { background: rgba(176,48,48,.15); border: 1px solid rgba(176,48,48,.25); border-radius: 8px; padding: 9px 12px; font-size: 12.5px; color: #fca5a5; margin-bottom: 12px; display: none; }
     .fg-error.show { display: block; }
 
-    /* ── Lien "mot de passe oublié" dans le login ── */
     .forgot-link {
-      display: block;
-      text-align: center;
-      margin-top: 10px;
-      font-size: 12px;
-      color: rgba(255,255,255,.4);
-      cursor: pointer;
-      transition: color .2s;
-      background: none;
-      border: none;
-      font-family: inherit;
-      width: 100%;
-      padding: 4px 0;
+      display: block; text-align: center; margin-top: 10px;
+      font-size: 12px; color: rgba(255,255,255,.4); cursor: pointer;
+      transition: color .2s; background: none; border: none;
+      font-family: inherit; width: 100%; padding: 4px 0;
     }
     .forgot-link:hover { color: #86efac; text-decoration: underline; }
   `;
@@ -499,12 +400,12 @@ async function doLogout() {
           <div id="forgot-header-icon">🔑</div>
           <div>
             <div id="forgot-header-title">Réinitialiser le mot de passe</div>
-            <div id="forgot-header-sub">AgriSmart — Récupération de compte</div>
+            <div id="forgot-header-sub">AgriSmart — Récupération sécurisée</div>
           </div>
           <button id="forgot-close-btn" onclick="closeForgotModal()">✕</button>
         </div>
 
-        <!-- Steps indicator -->
+        <!-- Steps -->
         <div id="forgot-steps">
           <div class="fg-step active" id="fg-step-1">
             <div class="fg-step-dot">1</div>
@@ -512,21 +413,21 @@ async function doLogout() {
           </div>
           <div class="fg-step" id="fg-step-2">
             <div class="fg-step-dot">2</div>
-            <div class="fg-step-label">Token</div>
+            <div class="fg-step-label">Email</div>
           </div>
           <div class="fg-step" id="fg-step-3">
             <div class="fg-step-dot">3</div>
-            <div class="fg-step-label">Nouveau MDP</div>
+            <div class="fg-step-label">Code + MDP</div>
           </div>
         </div>
 
         <!-- Body -->
         <div id="forgot-body">
 
-          <!-- Étape 1 — Saisie login -->
+          <!-- ── Étape 1 : Saisie identifiant ── -->
           <div class="fg-panel active" id="fg-panel-1">
             <div class="fg-desc">
-              Entrez votre identifiant de connexion. Un token de réinitialisation sera généré.
+              Entrez votre identifiant de connexion pour commencer la procédure de récupération.
             </div>
             <div class="fg-error" id="fg-err-1"></div>
             <div class="fg-field">
@@ -537,7 +438,7 @@ async function doLogout() {
             </div>
           </div>
 
-          <!-- Étape 2 — Afficher token -->
+          <!-- ── Étape 2 : Email obligatoire → envoi code ── -->
           <div class="fg-panel" id="fg-panel-2">
             <div class="fg-user-info" id="fg-user-info">
               <div class="fg-user-avatar" id="fg-user-avatar">A</div>
@@ -547,30 +448,66 @@ async function doLogout() {
               </div>
             </div>
             <div class="fg-desc">
-              Copiez ce token et utilisez-le à l'étape suivante pour définir votre nouveau mot de passe.
+              Pour sécuriser la réinitialisation, un <strong>code de confirmation à 6 chiffres</strong>
+              sera envoyé à votre adresse email administrateur.
             </div>
-            <div class="fg-token-box">
-              <div class="fg-token-label">🔐 Token de réinitialisation</div>
-              <div class="fg-token-value" id="fg-token-value" onclick="copyToken(this)" title="Cliquez pour copier">
-                …
+            <div class="fg-error" id="fg-err-2"></div>
+
+            <div class="fg-email-section">
+              <div class="fg-email-title">
+                📧 Email de l'administrateur
               </div>
-              <div class="fg-token-copy">👆 Cliquez pour copier</div>
-              <div class="fg-token-expiry" id="fg-token-expiry">⏱ Expire dans 30 minutes</div>
+              <div class="fg-email-desc">
+                Saisissez votre adresse email pour recevoir le code de confirmation.
+                Ce code expire dans <strong>10 minutes</strong>.
+              </div>
+              <input
+                type="email"
+                id="fg-admin-email"
+                class="fg-email-input"
+                placeholder="admin@agrismart.dz"
+                onkeydown="if(event.key==='Enter') sendConfirmCode()"
+                maxlength="150"
+              >
+              <button class="fg-email-send-btn" id="fg-send-code-btn" onclick="sendConfirmCode()">
+                📨 Envoyer le code de confirmation
+              </button>
+            </div>
+
+            <!-- Confirmation que l'email a été envoyé -->
+            <div class="fg-code-sent-info" id="fg-code-sent-info">
+              ✅ Code envoyé à <strong id="fg-sent-to"></strong> — vérifiez votre boîte mail et passez à l'étape suivante.
             </div>
           </div>
 
-          <!-- Étape 3 — Nouveau mot de passe -->
+          <!-- ── Étape 3 : Code + nouveau mot de passe ── -->
           <div class="fg-panel" id="fg-panel-3">
             <div class="fg-desc">
-              Entrez le token reçu et définissez votre nouveau mot de passe.
+              Entrez le <strong>code à 6 chiffres</strong> reçu par email, puis définissez votre nouveau mot de passe.
             </div>
             <div class="fg-error" id="fg-err-3"></div>
+
+            <!-- Code de confirmation -->
             <div class="fg-field">
-              <label>🔐 Token reçu</label>
-              <input type="text" id="fg-token-input" placeholder="Collez le token ici"
-                autocomplete="off" maxlength="64"
-                style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.5px;">
+              <label>📩 Code reçu par email</label>
+              <input
+                type="text"
+                id="fg-confirm-code"
+                class="fg-code-input"
+                placeholder="_ _ _ _ _ _"
+                maxlength="6"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="one-time-code"
+                oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                onkeydown="if(event.key==='Enter') forgotStep3()"
+              >
+              <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:5px;">
+                ⏱ Code valide 10 minutes · <span id="fg-resend-link" style="color:#7AB535;cursor:pointer;text-decoration:underline;" onclick="resendCode()">Renvoyer</span>
+              </div>
             </div>
+
+            <!-- Nouveau mot de passe -->
             <div class="fg-field">
               <label>🔒 Nouveau mot de passe</label>
               <div class="fg-pass-wrap">
@@ -582,7 +519,16 @@ async function doLogout() {
               </div>
               <div class="fg-strength-bar"><div class="fg-strength-fill" id="fg-strength-fill"></div></div>
               <div class="fg-strength-text" id="fg-strength-text"></div>
+              <div id="fg-pass-reqs" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(0,0,0,.2);border-radius:8px;font-size:11px;line-height:2;">
+                <div style="font-weight:700;color:#94a3b8;margin-bottom:4px;">Critères requis :</div>
+                <div id="req-len"     data-label="Minimum 6 caractères"         style="color:#ef4444">❌ Minimum 6 caractères</div>
+                <div id="req-letter"  data-label="Au moins une lettre"           style="color:#ef4444">❌ Au moins une lettre</div>
+                <div id="req-digit"   data-label="Au moins un chiffre"           style="color:#ef4444">❌ Au moins un chiffre</div>
+                <div id="req-upper"   data-label="Une majuscule (conseillé)"     style="color:#94a3b8">⚪ Une majuscule (conseillé)</div>
+                <div id="req-special" data-label="Un caractère spécial (!@#$…)" style="color:#94a3b8">⚪ Un caractère spécial (!@#$…)</div>
+              </div>
             </div>
+
             <div class="fg-field">
               <label>🔒 Confirmer le mot de passe</label>
               <div class="fg-pass-wrap">
@@ -594,13 +540,14 @@ async function doLogout() {
             </div>
           </div>
 
-          <!-- Succès -->
+          <!-- ── Succès ── -->
           <div class="fg-panel" id="fg-panel-success">
             <div class="fg-success">
               <span class="fg-success-icon">🎉</span>
               <div class="fg-success-title">Mot de passe modifié !</div>
               <div class="fg-success-sub" id="fg-success-msg">
                 Votre mot de passe a été réinitialisé avec succès.<br>
+                Un email de confirmation a été envoyé à l'administrateur.<br>
                 Vous pouvez maintenant vous connecter.
               </div>
             </div>
@@ -618,22 +565,17 @@ async function doLogout() {
     </div>
   `;
 
-  // Injecter CSS
   const style = document.createElement('style');
   style.textContent = css;
   document.head.appendChild(style);
 
-  // Injecter HTML
   const div = document.createElement('div');
   div.innerHTML = html;
   document.body.appendChild(div.firstElementChild);
 
-  // Injecter le lien "mot de passe oublié" dans la page login
-  // On attend que le DOM soit prêt
   function _injectLink() {
     const loginBtn = document.querySelector('.btn-login');
     if (!loginBtn) return;
-    // Vérifier qu'on n'a pas déjà injecté le lien
     if (document.getElementById('forgot-link-btn')) return;
     const link = document.createElement('button');
     link.id = 'forgot-link-btn';
@@ -646,7 +588,6 @@ async function doLogout() {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _injectLink);
   } else {
-    // Réessayer quelques fois car le HTML login peut être injecté après
     let tries = 0;
     const t = setInterval(() => {
       _injectLink();
@@ -659,43 +600,45 @@ async function doLogout() {
 /* ═══════════════════════════════════════════════════════
    ÉTAT DE LA MODALE
 ═══════════════════════════════════════════════════════ */
-let _fgStep   = 1;
-let _fgToken  = '';
-let _fgPrenom = '';
+let _fgStep         = 1;
+let _fgToken        = '';
+let _fgPrenom       = '';
+let _fgAdminEmail   = '';
+let _fgConfirmCode  = '';   // code généré côté client (6 chiffres)
+let _fgCodeSent     = false;
 
 function openForgotModal() {
-  _fgStep = 1; _fgToken = ''; _fgPrenom = '';
+  _fgStep = 1; _fgToken = ''; _fgPrenom = ''; _fgAdminEmail = '';
+  _fgConfirmCode = ''; _fgCodeSent = false;
   _fgUpdateUI();
-  const ov = document.getElementById('forgot-overlay');
-  if (ov) { ov.classList.add('open'); }
+  document.getElementById('forgot-overlay')?.classList.add('open');
   setTimeout(() => document.getElementById('fg-login-input')?.focus(), 250);
 }
 
 function closeForgotModal() {
-  const ov = document.getElementById('forgot-overlay');
-  if (ov) ov.classList.remove('open');
-  // Reset champs sensibles
-  const inputs = ['fg-login-input','fg-token-input','fg-new-pass','fg-confirm-pass'];
-  inputs.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  _fgClearError(1); _fgClearError(3);
+  document.getElementById('forgot-overlay')?.classList.remove('open');
+  ['fg-login-input','fg-admin-email','fg-confirm-code','fg-new-pass','fg-confirm-pass'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const sentInfo = document.getElementById('fg-code-sent-info');
+  if (sentInfo) sentInfo.classList.remove('show');
+  _fgClearError(1); _fgClearError(2); _fgClearError(3);
+  _fgCodeSent = false;
 }
 
-// Fermer en cliquant sur l'overlay
-document.addEventListener('click', (e) => {
-  if (e.target && e.target.id === 'forgot-overlay') closeForgotModal();
-});
-
-// Fermer avec Échap
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeForgotModal();
-});
+document.addEventListener('click', (e) => { if (e.target?.id === 'forgot-overlay') closeForgotModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeForgotModal(); });
 
 /* ── Navigation ── */
 function forgotNext() {
   if (_fgStep === 1) forgotStep1();
-  else if (_fgStep === 2) forgotGoToStep3();
+  else if (_fgStep === 2) {
+    if (!_fgCodeSent) { sendConfirmCode(); }
+    else              { _fgStep = 3; _fgUpdateUI(); setTimeout(() => document.getElementById('fg-confirm-code')?.focus(), 200); }
+  }
   else if (_fgStep === 3) forgotStep3();
-  else if (_fgStep === 4) closeForgotModal(); // Succès → fermer
+  else if (_fgStep === 4) closeForgotModal();
 }
 
 function forgotBack() {
@@ -704,7 +647,7 @@ function forgotBack() {
   else closeForgotModal();
 }
 
-/* ── Step 1 : Demander le token ─────────────────────────── */
+/* ── Étape 1 : Vérifier identifiant + générer token ── */
 async function forgotStep1() {
   _fgClearError(1);
   const loginVal = document.getElementById('fg-login-input')?.value?.trim();
@@ -722,36 +665,20 @@ async function forgotStep1() {
     const d = await r.json();
     _fgSetLoading(false);
 
-    if (!d.success) {
-      _fgShowError(1, d.message || 'Erreur serveur. XAMPP est-il démarré ?');
+    if (!d.success || !d.found) {
+      _fgShowError(1, d.message || 'Identifiant introuvable ou compte inactif.');
       return;
     }
 
-    if (!d.found) {
-      // Compte non trouvé — message générique (sécurité)
-      _fgShowError(1, 'Identifiant introuvable ou compte inactif.');
-      return;
-    }
-
-    // Succès — afficher le token
     _fgToken  = d.token  || '';
     _fgPrenom = d.prenom || loginVal;
 
-    const tokenEl = document.getElementById('fg-token-value');
-    if (tokenEl) tokenEl.textContent = _fgToken;
-
-    const nameEl = document.getElementById('fg-user-name');
-    if (nameEl) nameEl.textContent = _fgPrenom;
-
-    const avatarEl = document.getElementById('fg-user-avatar');
-    if (avatarEl) avatarEl.textContent = _fgPrenom.charAt(0).toUpperCase();
-
-    // Pré-remplir le champ token à l'étape 3
-    const tokenInput = document.getElementById('fg-token-input');
-    if (tokenInput) tokenInput.value = _fgToken;
+    document.getElementById('fg-user-name').textContent   = _fgPrenom;
+    document.getElementById('fg-user-avatar').textContent = _fgPrenom.charAt(0).toUpperCase();
 
     _fgStep = 2;
     _fgUpdateUI();
+    setTimeout(() => document.getElementById('fg-admin-email')?.focus(), 200);
 
   } catch(e) {
     _fgSetLoading(false);
@@ -759,25 +686,92 @@ async function forgotStep1() {
   }
 }
 
-/* ── Step 2 → 3 : Passer à la saisie du nouveau MDP ──── */
-function forgotGoToStep3() {
-  _fgStep = 3;
-  _fgUpdateUI();
-  setTimeout(() => document.getElementById('fg-new-pass')?.focus(), 200);
+/* ── Étape 2 : Envoyer le code de confirmation par email ── */
+async function sendConfirmCode() {
+  _fgClearError(2);
+  const emailVal = document.getElementById('fg-admin-email')?.value?.trim();
+
+  if (!emailVal) { _fgShowError(2, 'Veuillez saisir votre adresse email.'); return; }
+  if (!emailVal.includes('@') || !emailVal.includes('.')) { _fgShowError(2, 'Adresse email invalide.'); return; }
+
+  _fgAdminEmail = emailVal;
+
+  // Générer un code à 6 chiffres côté client
+  _fgConfirmCode = String(Math.floor(100000 + Math.random() * 900000));
+
+  const btn = document.getElementById('fg-send-code-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi en cours…'; }
+
+  try {
+    // Envoyer l'email avec le code via send_reset_mail.php
+    const r = await fetch('api/send_reset_mail.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        admin_email: _fgAdminEmail,
+        login:       document.getElementById('fg-login-input')?.value?.trim() || '?',
+        action:      'confirmation_reset',
+        timestamp:   new Date().toLocaleString('fr-FR'),
+        code:        _fgConfirmCode,   // ← le code 6 chiffres
+        mode:        'code',
+      })
+    });
+    const data = await r.json();
+
+    if (btn) { btn.disabled = false; btn.textContent = '📨 Renvoyer le code'; }
+
+    _fgCodeSent = true;
+
+    // Afficher la confirmation d'envoi
+    const sentInfo = document.getElementById('fg-code-sent-info');
+    const sentTo   = document.getElementById('fg-sent-to');
+    if (sentInfo) sentInfo.classList.add('show');
+    if (sentTo)   sentTo.textContent = _fgAdminEmail;
+
+    if (typeof showNotif === 'function') showNotif('📧 Code envoyé à ' + _fgAdminEmail);
+
+    // Bouton "Continuer" devient actif pour passer à étape 3
+    const btnNext = document.getElementById('fg-btn-next');
+    if (btnNext) btnNext.textContent = 'Continuer →';
+
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '📨 Envoyer le code'; }
+
+    // Mode hors-ligne : on permet quand même de continuer (dev XAMPP local)
+    _fgCodeSent = true;
+    _fgShowError(2, `⚠️ Email non envoyé (SMTP non configuré). Code local : ${_fgConfirmCode}`);
+    if (typeof showNotif === 'function') showNotif('⚠️ Mode local — code : ' + _fgConfirmCode);
+  }
 }
 
-/* ── Step 3 : Réinitialiser le mot de passe ─────────────── */
+/* Renvoyer le code */
+async function resendCode() {
+  _fgCodeSent = false;
+  const sentInfo = document.getElementById('fg-code-sent-info');
+  if (sentInfo) sentInfo.classList.remove('show');
+  await sendConfirmCode();
+}
+
+/* ── Étape 3 : Vérifier code + réinitialiser MDP ── */
 async function forgotStep3() {
   _fgClearError(3);
-  const token   = document.getElementById('fg-token-input')?.value?.trim();
-  const newPass = document.getElementById('fg-new-pass')?.value;
-  const confPass= document.getElementById('fg-confirm-pass')?.value;
 
-  if (!token)          { _fgShowError(3, 'Le token est requis.'); return; }
-  if (token.length !== 64) { _fgShowError(3, 'Token invalide (64 caractères requis).'); return; }
-  if (!newPass)        { _fgShowError(3, 'Le nouveau mot de passe est requis.'); return; }
-  if (newPass.length < 6) { _fgShowError(3, 'Mot de passe trop court (minimum 6 caractères).'); return; }
-  if (newPass !== confPass){ _fgShowError(3, 'Les mots de passe ne correspondent pas.'); return; }
+  const codeVal   = document.getElementById('fg-confirm-code')?.value?.trim();
+  const newPass   = document.getElementById('fg-new-pass')?.value;
+  const confPass  = document.getElementById('fg-confirm-pass')?.value;
+
+  // Valider le code
+  if (!codeVal)               { _fgShowError(3, '❌ Veuillez saisir le code reçu par email.'); return; }
+  if (codeVal.length !== 6)   { _fgShowError(3, '❌ Le code doit contenir exactement 6 chiffres.'); return; }
+  if (codeVal !== _fgConfirmCode) { _fgShowError(3, '❌ Code incorrect. Vérifiez votre email ou renvoyez un nouveau code.'); return; }
+
+  // Valider le mot de passe
+  if (!newPass)                   { _fgShowError(3, '❌ Le nouveau mot de passe est requis.'); return; }
+  if (newPass.length < 6)         { _fgShowError(3, '❌ Minimum 6 caractères requis.'); return; }
+  if (!/[A-Za-z]/.test(newPass) || !/[0-9]/.test(newPass)) {
+    _fgShowError(3, '⚠️ Le mot de passe doit contenir au moins une lettre et un chiffre.'); return;
+  }
+  if (newPass !== confPass)       { _fgShowError(3, '❌ Les mots de passe ne correspondent pas.'); return; }
 
   _fgSetLoading(true, 'Mise à jour…');
 
@@ -785,7 +779,7 @@ async function forgotStep3() {
     const r = await fetch(`${USERS_API}?action=reset_password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, mot_de_passe: newPass, confirmation: confPass }),
+      body: JSON.stringify({ token: _fgToken, mot_de_passe: newPass, confirmation: confPass }),
     });
     const d = await r.json();
     _fgSetLoading(false);
@@ -795,13 +789,28 @@ async function forgotStep3() {
       return;
     }
 
-    // ✅ Succès
+    // ✅ Envoyer l'email de confirmation finale à l'admin
+    try {
+      await fetch('api/send_reset_mail.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          admin_email: _fgAdminEmail,
+          login:       document.getElementById('fg-login-input')?.value?.trim() || '?',
+          action:      'reset_password_success',
+          timestamp:   new Date().toLocaleString('fr-FR'),
+          mode:        'success',
+        })
+      });
+    } catch(e) { console.warn('Email confirmation finale non envoyé:', e.message); }
+
     const msgEl = document.getElementById('fg-success-msg');
-    if (msgEl) msgEl.innerHTML = (d.message || 'Mot de passe modifié avec succès.') + '<br>Vous pouvez maintenant vous connecter.';
+    if (msgEl) msgEl.innerHTML = (d.message || 'Mot de passe modifié avec succès.')
+      + `<br>📧 Confirmation envoyée à <strong>${_fgAdminEmail}</strong><br>Vous pouvez maintenant vous connecter.`;
 
     _fgStep = 4;
     _fgUpdateUI();
-    if (typeof showNotif === 'function') showNotif('✅ Mot de passe réinitialisé avec succès !');
+    if (typeof showNotif === 'function') showNotif('✅ Mot de passe réinitialisé !');
 
   } catch(e) {
     _fgSetLoading(false);
@@ -814,17 +823,12 @@ function copyToken(el) {
   const text = el?.textContent?.trim();
   if (!text) return;
   navigator.clipboard?.writeText(text).then(() => {
-    if (typeof showNotif === 'function') showNotif('📋 Token copié dans le presse-papier !');
-    const copyHint = el.nextElementSibling;
-    if (copyHint) { copyHint.textContent = '✅ Copié !'; setTimeout(() => { copyHint.textContent = '👆 Cliquez pour copier'; }, 2000); }
+    if (typeof showNotif === 'function') showNotif('📋 Token copié !');
   }).catch(() => {
-    // Fallback sélection manuelle
     const range = document.createRange();
     range.selectNodeContents(el);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    if (typeof showNotif === 'function') showNotif('📋 Sélectionné — Ctrl+C pour copier');
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(range);
   });
 }
 
@@ -841,65 +845,86 @@ function toggleFgPassVis(inputId, btn) {
 function checkPassStrength(val) {
   const fill = document.getElementById('fg-strength-fill');
   const text = document.getElementById('fg-strength-text');
+  const reqs = document.getElementById('fg-pass-reqs');
   if (!fill || !text) return;
-  if (!val) { fill.style.width = '0%'; text.textContent = ''; return; }
+  if (!val) { fill.style.width='0%'; text.textContent=''; if(reqs) reqs.style.display='none'; return; }
+  if(reqs) reqs.style.display='block';
+
+  const checks = {
+    len6:    val.length >= 6,
+    len10:   val.length >= 10,
+    upper:   /[A-Z]/.test(val),
+    lower:   /[a-z]/.test(val),
+    digit:   /[0-9]/.test(val),
+    special: /[^A-Za-z0-9]/.test(val),
+  };
+
+  const setReq = (id, ok) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = (ok ? '✅ ' : '❌ ') + el.dataset.label;
+    el.style.color = ok ? '#22c55e' : '#ef4444';
+  };
+  setReq('req-len',     checks.len6);
+  setReq('req-letter',  checks.upper || checks.lower);
+  setReq('req-digit',   checks.digit);
+  setReq('req-upper',   checks.upper);
+  setReq('req-special', checks.special);
+
   let score = 0;
-  if (val.length >= 6)  score++;
-  if (val.length >= 10) score++;
-  if (/[A-Z]/.test(val)) score++;
-  if (/[0-9]/.test(val)) score++;
-  if (/[^A-Za-z0-9]/.test(val)) score++;
+  if (checks.len6)    score++;
+  if (checks.len10)   score++;
+  if (checks.upper)   score++;
+  if (checks.digit)   score++;
+  if (checks.special) score++;
+
   const levels = [
-    { pct:'20%', bg:'#ef4444', lbl:'❌ Trop court' },
-    { pct:'40%', bg:'#f97316', lbl:'⚠️ Faible' },
-    { pct:'60%', bg:'#eab308', lbl:'🟡 Moyen' },
-    { pct:'80%', bg:'#84cc16', lbl:'✅ Bon' },
-    { pct:'100%',bg:'#22c55e', lbl:'🔒 Très fort' },
+    { pct:'15%', bg:'#ef4444', lbl:'❌ Trop court — minimum 6 caractères' },
+    { pct:'35%', bg:'#f97316', lbl:'⚠️ Faible — ajoutez des chiffres' },
+    { pct:'55%', bg:'#eab308', lbl:'🟡 Moyen — ajoutez majuscules' },
+    { pct:'80%', bg:'#84cc16', lbl:'✅ Bon — recommandé' },
+    { pct:'100%',bg:'#22c55e', lbl:'🔒 Très fort — excellent !' },
   ];
   const lvl = levels[Math.min(score, levels.length - 1)];
-  fill.style.width = lvl.pct;
+  fill.style.width      = lvl.pct;
   fill.style.background = lvl.bg;
-  text.textContent = lvl.lbl;
-  text.style.color = lvl.bg;
+  text.textContent      = lvl.lbl;
+  text.style.color      = lvl.bg;
 }
 
-/* ── Helpers UI ── */
+/* ── UI helpers ── */
 function _fgUpdateUI() {
-  // Panels
-  [1,2,3,'success'].forEach(p => {
+  ['1','2','3','success'].forEach(p => {
     const el = document.getElementById(`fg-panel-${p}`);
-    if (el) el.classList.toggle('active', p === (_fgStep === 4 ? 'success' : _fgStep));
+    if (el) el.classList.toggle('active', p === (_fgStep === 4 ? 'success' : String(_fgStep)));
   });
 
-  // Steps indicators
   [1,2,3].forEach(s => {
     const step = document.getElementById(`fg-step-${s}`);
     if (!step) return;
     step.classList.remove('active','done');
-    if (s < _fgStep)  step.classList.add('done');
+    if (s < _fgStep)   step.classList.add('done');
     if (s === _fgStep) step.classList.add('active');
     const dot = step.querySelector('.fg-step-dot');
-    if (dot) dot.textContent = s < _fgStep ? '✓' : s;
+    if (dot) dot.textContent = s < _fgStep ? '✓' : String(s);
   });
 
-  // Buttons
   const btnBack = document.getElementById('fg-btn-back');
   const btnNext = document.getElementById('fg-btn-next');
 
   if (btnBack) {
     btnBack.style.display = _fgStep === 4 ? 'none' : '';
-    btnBack.textContent = _fgStep === 1 ? '✕ Annuler' : '← Retour';
+    btnBack.textContent   = _fgStep === 1 ? '✕ Annuler' : '← Retour';
   }
   if (btnNext) {
-    const labels = { 1:'Générer le token →', 2:'Continuer →', 3:'Réinitialiser →', 4:'✓ Fermer' };
+    const step2Label = _fgCodeSent ? 'Continuer →' : '📨 Envoyer le code';
+    const labels = { 1:'Vérifier →', 2: step2Label, 3:'✅ Réinitialiser →', 4:'✓ Fermer' };
     btnNext.textContent = labels[_fgStep] || 'Continuer →';
-    if (_fgStep === 4) btnNext.style.width = '100%';
-    else btnNext.style.width = '';
+    btnNext.style.width = _fgStep === 4 ? '100%' : '';
   }
 
-  // Header icon
-  const icon = document.getElementById('forgot-header-icon');
-  const icons = { 1:'🔑', 2:'📋', 3:'🔒', 4:'🎉' };
+  const icon  = document.getElementById('forgot-header-icon');
+  const icons = { 1:'🔑', 2:'📧', 3:'🔒', 4:'🎉' };
   if (icon) icon.textContent = icons[_fgStep] || '🔑';
 }
 
@@ -914,13 +939,15 @@ function _fgClearError(step) {
 }
 
 function _fgSetLoading(loading, label) {
-  const btn = document.getElementById('fg-btn-next');
+  const btn  = document.getElementById('fg-btn-next');
   const back = document.getElementById('fg-btn-back');
   if (btn) {
     btn.disabled = loading;
-    if (loading) btn.textContent = '⏳ ' + (label || 'Chargement…');
-    else {
-      const labels = { 1:'Générer le token →', 2:'Continuer →', 3:'Réinitialiser →', 4:'✓ Fermer' };
+    if (loading) {
+      btn.textContent = '⏳ ' + (label || 'Chargement…');
+    } else {
+      const step2Label = _fgCodeSent ? 'Continuer →' : '📨 Envoyer le code';
+      const labels = { 1:'Vérifier →', 2: step2Label, 3:'✅ Réinitialiser →', 4:'✓ Fermer' };
       btn.textContent = labels[_fgStep] || 'Continuer →';
     }
   }
@@ -937,7 +964,7 @@ function _fgSetLoading(loading, label) {
     const d = document.createElement('div');
     d.className = 'particle';
     const s = Math.random() * 30 + 10;
-    d.style.cssText = `width:${s}px;height:${s}px;left:${Math.random() * 100}%;animation-duration:${Math.random() * 12 + 8}s;animation-delay:${Math.random() * 8}s;opacity:0;`;
+    d.style.cssText = `width:${s}px;height:${s}px;left:${Math.random()*100}%;animation-duration:${Math.random()*12+8}s;animation-delay:${Math.random()*8}s;opacity:0;`;
     c.appendChild(d);
   }
 })();

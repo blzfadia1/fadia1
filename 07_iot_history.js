@@ -59,11 +59,11 @@ async function buildIoTPage() {
   // LoRa architecture detail
   document.getElementById('lora-arch-body').innerHTML = `
     <div style="font-size:13px;color:var(--text-m);line-height:1.7;margin-bottom:16px;">
-      Le <strong>LoRaWAN</strong> permet à vos capteurs ESP32 de transmettre des données sur <strong>10–15 km</strong> avec une consommation ultra-faible. Idéal pour les grandes exploitations sans couverture WiFi.
+      ${typeof T==='function'?T('loraDesc'):'Le LoRaWAN permet à vos capteurs ESP32 de transmettre des données sur 10-15 km avec une consommation ultra-faible.'}
     </div>
     ${[
       {ico:'📟',bg:'#f0fdf4',c:'var(--green)', t:'1. ESP32 (Nœud)',        d:'Collecte pH, T°, humidité toutes les 10s. Encode les données en format compact (12 bytes). Envoie via LoRa SX1276.'},
-      {ico:'📡',bg:'#e0f2fe',c:'var(--blue)',  t:'2. Gateway LoRaWAN',     d:'Reçoit les trames LoRa sur 8 canaux simultanés. Décode et transmet via Ethernet/4G au serveur cloud.'},
+      {ico:'📡',bg:'#e0f2fe',c:'var(--blue)',  t:(typeof T==='function'?T('loraGW'):'2. Gateway LoRaWAN'),     d:(typeof T==='function'?T('loraGWDesc'):'Reçoit les trames LoRa sur 8 canaux simultanés. Décode et transmet via Ethernet/4G au serveur cloud.')},
       {ico:'☁️',bg:'#ede9fe',c:'var(--violet)',t:'3. Serveur réseau (TTN)',  d:'The Things Network gère l\'authentification, le déduplication, et route vers votre application.'},
       {ico:'🧠',bg:'#fef3c7',c:'var(--amber)', t:'4. Traitement IA',       d:'Les données arrivent en JSON → Random Forest recommande la culture, LSTM prédit les besoins futurs.'},
     ].map(s=>`

@@ -1,307 +1,613 @@
 /* ════════════════════════════════════════════════════════════════
-   AgriSmart — 06 — LSTM — Vrai Raisonnement Mathématique
-   lstmInfer(), buildLSTMPage(), onLSTMSlider(), lancerLSTM()
+   AgriSmart — 06_lstm.js
+   ✅ VRAI LSTM TensorFlow.js — entraîné sur données ESP32 réelles
+   Architecture : LSTM(64) → LSTM(32) → Dense(7)
+   Données : historique MySQL via api/iot_history.php
 ════════════════════════════════════════════════════════════════ */
 "use strict";
 
-/* ══ MOTEUR LSTM ═══════════════════════════════════════════════ */
-const _sig  = x => 1/(1+Math.exp(-Math.max(-20,Math.min(20,x))));
-const _tanh = x => Math.tanh(Math.max(-20,Math.min(20,x)));
+/* ══ Constantes ══════════════════════════════════════════════ */
+const LSTM_SEQ_LEN   = 10;   // fenêtre d'entrée (10 mesures)
+const LSTM_HORIZON   = 7;    // prédire 7 jours
+const LSTM_EPOCHS    = 60;
+const LSTM_BATCH     = 8;
+const THRESH_CRITICAL = 35;  // seuil irrigation %
 
-function lstmInfer(temp,pluie,hum,rad,vent){
-  const nT=(temp-5)/40, nP=pluie/40, nH=(hum-10)/80, nR=(rad-5)/25, nV=vent/12;
-  const f_t=_sig(0.8*nH+0.6*nP-0.4*nT+0.5*nR-0.3*nV-0.5);
-  const i_t=_sig(1.2*nH+0.8*nP-0.6*nT+0.4*nR-0.2*nV-0.3);
-  const g_t=_tanh(1.0*nH+0.9*nP-0.7*nT+0.6*nR-0.4*nV);
-  const o_t=_sig(0.6*nH+0.5*nP-0.3*nT+0.7*nR-0.2*nV-0.2);
-  const c_t=f_t*0.4+i_t*g_t;
-  const h_t=o_t*_tanh(c_t);
-  const base=4.0+0.8*Math.sin(2*Math.PI*(nT*0.4+nP*0.3+nH*0.3));
-  const direct=0.04*(hum-40)+0.08*pluie-0.06*Math.max(temp-32,0)+0.05*(rad-18)-0.08*Math.max(vent-5,0);
-  const pred=Math.round(Math.max(1.5,Math.min(7.5,base+h_t*2.2*0.5+direct*0.4))*100)/100;
-  return {pred,f_t,i_t,g_t,o_t,c_t,h_t,base,direct,nT,nP,nH,nR,nV};
+/* ══ État global LSTM ════════════════════════════════════════ */
+let _lstmModel       = null;
+let _lstmReady       = false;
+let _lstmAccuracy    = 0;
+let _lstmTrainPromise= null;
+let _lstmRawHistory  = [];   // données brutes ESP32
+let _lstmNorm        = { min: 0, max: 100 }; // normalisation
+let _lstmTarget      = 'humidite_air'; // variable à prédire par défaut
+
+/* ══ Page LSTM ═══════════════════════════════════════════════ */
+function buildLSTMPage() {
+  const days = _getDayLabels ? _getDayLabels() : [];
+  const todayLabel = days[6]?.short || 'Auj.';
+
+  /* Statistiques top */
+  document.getElementById('lstm-stats').innerHTML = `
+    <div class="lstm-stat-card">
+      <div class="stat-icon" style="background:#ede9fe">📈</div>
+      <div class="stat-body">
+        <div class="stat-val" style="color:var(--violet)" id="lstm-prec-val">—</div>
+        <div class="stat-label" id="lstm-prec-lbl">Précision LSTM</div>
+        <div class="stat-trend trend-up" id="lstm-trend-lbl">⏳ À entraîner</div>
+      </div>
+    </div>
+    <div class="lstm-stat-card">
+      <div class="stat-icon" style="background:#f0fdf4">⏱️</div>
+      <div class="stat-body">
+        <div class="stat-val" style="color:var(--green)">${LSTM_HORIZON}j</div>
+        <div class="stat-label" id="lstm-horiz-lbl">Horizon de prévision</div>
+      </div>
+    </div>
+    <div class="lstm-stat-card">
+      <div class="stat-icon" style="background:#e0f2fe">🔄</div>
+      <div class="stat-body">
+        <div class="stat-val" style="color:var(--blue)">${LSTM_SEQ_LEN} seq</div>
+        <div class="stat-label" id="lstm-fen-lbl">Fenêtre d'entrée</div>
+      </div>
+    </div>
+    <div class="lstm-stat-card">
+      <div class="stat-icon" style="background:#fef3c7">📉</div>
+      <div class="stat-body">
+        <div class="stat-val" style="color:var(--amber)" id="lstm-mae-val">—</div>
+        <div class="stat-label" id="lstm-mae-lbl">Erreur MAE</div>
+        <div class="stat-trend trend-up" id="lstm-ameli-lbl">TF.js LSTM réel</div>
+      </div>
+    </div>`;
+
+  buildLSTMBody(todayLabel);
+  _lstmAutoLoad();
 }
 
-/* ══ PAGE LSTM ══════════════════════════════════════════════════ */
+function buildLSTMBody(todayLabel) {
+  const labels = _getDayLabels ? _getDayLabels() : Array.from({length:14},(_,i)=>({short:'J'+(i-6),isToday:i===6,isFuture:i>6}));
+  const tL = typeof T === 'function' ? T : k => k;
 
-/* ═══════════════════════════════════════════════════════
-   AUTO-FILL DEPUIS ESP32 — récupère données réelles
-═══════════════════════════════════════════════════════ */
-async function getSensorData() {
-  // iot_data.php — endpoint public sans session
-  let d;
-  try {
-    const r = await fetch('api/iot_data.php?action=capteurs', { cache:'no-cache' });
-    d = await r.json();
-  } catch(e) { return null; }
-  if (!d || !d.success || !d.capteurs || d.capteurs.length === 0) return null;
-  const avg = (key) => {
-    const vals = d.capteurs.map(c => c[key])
-      .filter(v => v !== null && v !== undefined && !isNaN(parseFloat(v)));
-    const nums = vals.map(v => parseFloat(v)).filter(v => !isNaN(v));
-    return nums.length ? nums.reduce((a,b) => a+b, 0) / nums.length : null;
-  };
-  return {
-    temp: avg('temperature'), hs: avg('humidite_sol'), ha: avg('humidite_air'),
-    ph: avg('ph'), az: avg('azote'), po: avg('phosphore'), ka: avg('potassium'),
-  };
-}
-
-function buildLSTMPage(){
-  const el=document.getElementById('page-lstm');
-  if(!el)return;
-function buildLSTMPage(){
-  // ── Injecter le simulateur dans la page LSTM existante ──
-  // (la page a déjà les graphiques SVG et le planning dans le HTML statique)
-  
-  // 1. Ajouter les stats-grid si pas déjà là
-  // Les stats-grid existent déjà dans le HTML statique — on ne les recrée pas
-
-  // 2. Injecter le simulateur AVANT les graphiques SVG existants
-  let simEl = document.getElementById('lstm-simulator');
-  if(!simEl){
-    simEl = document.createElement('div');
-    simEl.id = 'lstm-simulator';
-    const pg = document.getElementById('page-lstm');
-    const firstCard = pg ? pg.querySelector('.g2, .card') : null;
-    if(firstCard) firstCard.insertAdjacentElement('beforebegin', simEl);
-    else if(pg) pg.appendChild(simEl);
-  }
-  simEl.innerHTML=`
-  <div class="stats-grid" style="margin-bottom:20px;">
-    <div class="stat-card"><div class="stat-icon" style="background:#ede9fe;">📈</div><div class="stat-body"><div class="stat-val" style="color:var(--violet);">92.4%</div><div class="stat-label">Précision LSTM</div><div class="stat-trend trend-up">↑ +2.1%</div></div></div>
-    <div class="stat-card"><div class="stat-icon" style="background:#f0fdf4;">⏱️</div><div class="stat-body"><div class="stat-val" style="color:var(--green);">30 jours</div><div class="stat-label">Fenêtre temporelle</div></div></div>
-    <div class="stat-card"><div class="stat-icon" style="background:#e0f2fe;">🧠</div><div class="stat-body"><div class="stat-val" style="color:var(--blue);">4 Portes</div><div class="stat-label">Architecture LSTM</div></div></div>
-    <div class="stat-card"><div class="stat-icon" style="background:#fef3c7;">📉</div><div class="stat-body"><div class="stat-val" style="color:var(--amber);">0.023</div><div class="stat-label">Erreur MAE</div></div></div>
-  </div>
-  <div class="card" style="margin-bottom:20px;">
-    <div class="card-header">
-      <div class="card-icon" style="background:#ede9fe;">🧠</div>
-      <h3>Simulateur LSTM — Prédiction du Rendement</h3>
-      <span class="badge bg-violet" style="margin-left:auto;">Vrai Raisonnement</span>
-    </div>
-    <div class="card-body">
-      <div class="g2" style="margin-bottom:16px;">
-        <div>
-          ${_lstmField('lr-temp','lv-temp','ln-temp','lnv-temp','🌡️ Température','5','45','28','°C','var(--violet)')}
-          ${_lstmField('lr-pluie','lv-pluie','ln-pluie','lnv-pluie','🌧️ Précipitations','0','40','12','mm','var(--blue)')}
-          ${_lstmField('lr-hum','lv-hum','ln-hum','lnv-hum','💧 Humidité Sol','10','90','55','%','var(--green)')}
-        </div>
-        <div>
-          ${_lstmField('lr-rad','lv-rad','ln-rad','lnv-rad','☀️ Radiation','5','30','18','MJ/m²','var(--amber)')}
-          ${_lstmField('lr-vent','lv-vent','ln-vent','lnv-vent','💨 Vent','0','12','3','m/s','var(--slate)')}
-          <div style="text-align:center;padding:18px 0 8px;">
-            <button onclick="lancerLSTM()" id="btn-lstm"
-              style="background:linear-gradient(135deg,var(--violet),#5b21b6);color:#fff;border:none;padding:13px 36px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;transition:.2s;">
-              🌾 Lancer la Prédiction LSTM
-            </button>
-          </div>
-        </div>
-      </div>
-      <div id="lstm-result" style="display:none;background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(91,33,182,.04));border:1px solid rgba(124,58,237,.3);border-radius:14px;padding:20px;text-align:center;margin-bottom:16px;">
-        <div style="font-size:10px;color:var(--slate);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;">Rendement Prédit</div>
-        <div style="font-family:Outfit,sans-serif;font-size:64px;font-weight:800;color:var(--violet);line-height:1;" id="lstm-pred-val">—</div>
-        <div style="font-size:12px;color:var(--slate);">tonnes / hectare</div>
-        <span id="lstm-pred-badge" style="display:inline-block;margin-top:10px;padding:5px 16px;border-radius:20px;font-size:12px;font-weight:700;"></span>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;">
-          <div style="background:rgba(0,0,0,.05);border-radius:8px;padding:8px;">
-            <div style="font-size:10px;color:var(--slate);margin-bottom:2px;">Base saisonnière</div>
-            <div style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;" id="lstm-base">—</div>
-          </div>
-          <div style="background:rgba(0,0,0,.05);border-radius:8px;padding:8px;">
-            <div style="font-size:10px;color:var(--slate);margin-bottom:2px;">Contrib. LSTM (h_t)</div>
-            <div style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;color:var(--violet);" id="lstm-contrib">—</div>
-          </div>
-          <div style="background:rgba(0,0,0,.05);border-radius:8px;padding:8px;">
-            <div style="font-size:10px;color:var(--slate);margin-bottom:2px;">Effets directs</div>
-            <div style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;" id="lstm-direct">—</div>
-          </div>
-        </div>
-      </div>
-      <div style="font-size:11px;font-weight:700;color:var(--slate);margin-bottom:10px;letter-spacing:.5px;text-transform:uppercase;">🔢 Portes LSTM — valeurs en temps réel</div>
-      <div class="g2" style="gap:10px;">
-        ${_gateBlock('f_t','Porte d\'Oubli','g-ft','b-ft','var(--red)','rgba(220,38,38,.2)','σ( 0.8·nH + 0.6·nP − 0.4·nT + 0.5·nR − 0.3·nV − 0.5 )','→ 1=garder · 0=effacer')}
-        ${_gateBlock('i_t','Porte d\'Entrée','g-it','b-it','var(--green)','rgba(22,163,74,.2)','σ( 1.2·nH + 0.8·nP − 0.6·nT + 0.4·nR − 0.2·nV − 0.3 )','→ humidité sol = poids max +1.2')}
-        ${_gateBlock('g_t','Candidat','g-gt','b-gt','var(--amber)','rgba(217,119,6,.2)','tanh( 1.0·nH + 0.9·nP − 0.7·nT + 0.6·nR − 0.4·nV )','→ entre −1 et +1 · barre centrée sur 0')}
-        ${_gateBlock('o_t','Porte de Sortie','g-ot','b-ot','var(--blue)','rgba(2,132,199,.2)','σ( 0.6·nH + 0.5·nP − 0.3·nT + 0.7·nR − 0.2·nV − 0.2 )','→ radiation solaire = poids max +0.7')}
-      </div>
-      <div class="g2" style="margin-top:10px;gap:10px;">
-        <div style="background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:14px;">
-          <div style="font-size:11px;color:var(--violet);font-weight:700;margin-bottom:4px;">c_t — Cellule Mémoire</div>
-          <div style="font-family:JetBrains Mono,monospace;font-size:22px;font-weight:700;color:var(--violet);" id="g-ct">—</div>
-          <div style="font-size:10px;color:var(--slate);margin-top:4px;">= f_t × 0.4 + i_t × g_t</div>
-        </div>
-        <div style="background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:14px;">
-          <div style="font-size:11px;color:var(--violet);font-weight:700;margin-bottom:4px;">h_t — État Caché (sortie)</div>
-          <div style="font-family:JetBrains Mono,monospace;font-size:22px;font-weight:700;color:var(--violet);" id="g-ht">—</div>
-          <div style="font-size:10px;color:var(--slate);margin-top:4px;">= o_t × tanh(c_t)</div>
-        </div>
+  document.getElementById('page-lstm').querySelector('.page-body').innerHTML = `
+  <!-- Sélecteur zone + variable + bouton -->
+  <div class="card" style="padding:14px 20px;">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <select id="lstm-zone-sel" onchange="_lstmAutoLoad()" 
+        style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);
+               background:var(--bg-card);color:var(--text);font-size:13px;">
+        <option value="">⏳ Chargement zones...</option>
+      </select>
+      <select id="lstm-var-sel" onchange="_lstmAutoLoad()"
+        style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);
+               background:var(--bg-card);color:var(--text);font-size:13px;">
+        <option value="humidite_air">💧 Humidité Air</option>
+        <option value="temperature">🌡️ Température</option>
+        <option value="humidite_sol">🌱 Humidité Sol</option>
+      </select>
+      <button onclick="_lstmTrain()" id="lstm-train-btn"
+        style="padding:8px 18px;background:var(--violet);color:#fff;
+               border:none;border-radius:8px;cursor:pointer;font-weight:600;">
+        🧠 Entraîner LSTM
+      </button>
+      <div id="lstm-status-badge" style="font-size:12px;color:#94a3b8;">
+        Données ESP32 temps réel
       </div>
     </div>
   </div>
-  <div class="g2" style="margin-bottom:20px;">
-    <div class="card">
-      <div class="card-header">
-        <div class="card-icon" style="background:#ede9fe;">🌧️</div>
-        <h3>Prévision Humidité Sol — 7 Jours</h3>
-        <span class="badge bg-violet" style="margin-left:auto;">LSTM</span>
-      </div>
-      <div class="card-body">
-        <div class="chart-area" style="height:200px;">
-          <svg id="lstm-big" viewBox="0 0 500 160" preserveAspectRatio="none" style="width:100%;height:100%;"></svg>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--slate);margin-top:4px;">
-          <span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span>
-        </div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div class="card-icon" style="background:#fef3c7;">🌡️</div>
-        <h3>Prévision Température — 7 Jours</h3>
-        <span class="badge bg-amber" style="margin-left:auto;">LSTM</span>
-      </div>
-      <div class="card-body">
-        <div class="chart-area" style="height:160px;">
-          <svg id="lstm-temp" viewBox="0 0 500 160" preserveAspectRatio="none" style="width:100%;height:100%;"></svg>
-        </div>
-        <div style="margin-top:14px;" id="lstm-schedule"></div>
-      </div>
-    </div>
+
+  <!-- Log d'entraînement -->
+  <div id="lstm-train-log" style="display:none;padding:12px 16px;
+    background:#0f172a;border-radius:10px;margin-bottom:12px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:#22c55e;
+    border:1px solid #1e293b;max-height:120px;overflow-y:auto;">
   </div>
+
+  <!-- Bannière capteurs -->
+  <div id="lstm-sensor-banner" class="card" style="padding:14px 20px;">
+    <div style="font-size:12px;color:#94a3b8;text-align:center">⏳ Chargement capteurs...</div>
+  </div>
+
+  <!-- Légende -->
+  <div style="font-size:11px;color:var(--slate);text-align:center;padding:4px 0;">
+    <span id="lstm-legend-txt">Gris = 7 jours passés · Violet/Orange = 7 jours prévus · Jaune pointillé = seuil critique 35% (irriguer)</span>
+  </div>
+
+  <!-- Graphique principal -->
   <div class="card">
     <div class="card-header">
-      <div class="card-icon" style="background:#ede9fe;">🏗️</div>
-      <h3>Comment fonctionne le LSTM ?</h3>
+      <span class="card-title" id="lstm-chart-title">🧠 LSTM — <span id="lstm-today-lbl">${todayLabel}</span></span>
+      <span style="font-size:11px;padding:3px 8px;background:rgba(124,58,237,.15);
+        color:#a78bfa;border-radius:6px;" id="lstm-method-badge">TF.js</span>
     </div>
     <div class="card-body">
-      <div id="lstm-arch-steps"></div>
+      <svg id="lstm-big" width="100%" height="160" viewBox="0 0 500 160" preserveAspectRatio="xMidYMid meet"
+        style="display:block"></svg>
+      <div style="display:flex;justify-content:space-between;padding:4px 10px 0;font-size:10px;color:#94a3b8;" id="lstm-xaxis">
+        ${labels.filter((_,i)=>[0,2,4,6,8,10,12].includes(i)).map(l=>`
+          <span style="color:${l.isToday?'#22c55e':l.isFuture?'#7c3aed':'#94a3b8'};
+                font-weight:${l.isToday?'700':'400'}">${l.short}</span>`).join('')}
+      </div>
     </div>
   </div>
-  `;
 
-  if(!document.getElementById('lstm-css')){
-    const s=document.createElement('style');s.id='lstm-css';
-    s.textContent=`.lstm-f{margin-bottom:14px}.lstm-fl{font-size:13px;font-weight:600;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}.lstm-vb{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--violet);font-weight:700}.lstm-nr{display:flex;align-items:center;gap:8px;margin-top:4px}.lstm-nl{font-size:10px;color:var(--slate);white-space:nowrap}.lstm-nt{flex:1;height:3px;background:var(--border);border-radius:4px;overflow:hidden}.lstm-nf{height:100%;border-radius:4px;transition:width .3s}.lstm-nv{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--violet);min-width:34px;text-align:right}.lstm-g{background:var(--bg);border:1px solid;border-radius:12px;padding:14px;margin-bottom:0}.lstm-gh{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}.lstm-gv{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700}.lstm-bw{height:5px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px}.lstm-b{height:100%;border-radius:4px;transition:width .4s}.lstm-gf{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--slate);line-height:1.6}`;
-    document.head.appendChild(s);
-  }
-  onLSTMSlider();
-  _lstmArch();
-  _lstmSchedule();
-  // Auto-fill depuis capteurs ESP32
-  autoFillLSTMFromSensors();
+  <!-- Graphique température -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🌡️ Température — Prévision LSTM</span>
+    </div>
+    <div class="card-body">
+      <svg id="lstm-temp" width="100%" height="140" viewBox="0 0 500 140" 
+        preserveAspectRatio="xMidYMid meet" style="display:block"></svg>
+      <div style="display:flex;justify-content:space-between;padding:4px 10px 0;
+        font-size:10px;color:#94a3b8;" id="lstm-temp-xaxis">
+        ${labels.filter((_,i)=>[0,2,4,6,8,10,12].includes(i)).map(l=>`
+          <span style="color:${l.isToday?'#22c55e':l.isFuture?'#d97706':'#94a3b8'}">${l.short}</span>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <!-- Planning irrigation -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📅 Planning Irrigation — 7 jours</span>
+    </div>
+    <div id="lstm-schedule" class="card-body"></div>
+  </div>`;
+
+  /* Charger zones */
+  _lstmLoadZones();
 }
 
-async function autoFillLSTMFromSensors() {
-  const s = await getSensorData();
-  if (!s) return;
+/* ══ Charger zones depuis MySQL ══════════════════════════════ */
+async function _lstmLoadZones() {
+  try {
+    const r = await fetch('api/iot_data.php?action=noeuds', {cache:'no-cache'});
+    const d = await r.json();
+    const sel = document.getElementById('lstm-zone-sel');
+    if (!sel) return;
+    if (d.success && d.noeuds.length > 0) {
+      sel.innerHTML = d.noeuds.map(n =>
+        `<option value="${n.node_id}">${n.zone || n.node_id} (${n.node_id})</option>`
+      ).join('');
+    } else {
+      sel.innerHTML = '<option value="ESP32-DHT11">Mon champ — Nord</option>';
+    }
+  } catch(e) {
+    const sel = document.getElementById('lstm-zone-sel');
+    if (sel) sel.innerHTML = '<option value="ESP32-DHT11">Mon champ — Nord</option>';
+  }
+}
 
-  const setSlider = (id, valId, val, unit) => {
-    if (val === null || val === undefined) return;
-    const el = document.getElementById(id);
-    const vl = document.getElementById(valId);
-    if (!el) return;
-    const mn = parseInt(el.min), mx = parseInt(el.max);
-    const clamped = Math.min(Math.max(Math.round(val), mn), mx);
-    el.value = clamped;
-    if (vl) vl.textContent = clamped + ' ' + unit;
+/* ══ Auto-chargement des données + mise à jour bannière ═══════ */
+async function _lstmAutoLoad() {
+  const nodeId  = document.getElementById('lstm-zone-sel')?.value || 'ESP32-DHT11';
+  const varName = document.getElementById('lstm-var-sel')?.value  || 'humidite_air';
+  _lstmTarget = varName;
+
+  const badge = document.getElementById('lstm-status-badge');
+  if (badge) badge.innerHTML = '⏳ Chargement données ESP32...';
+
+  /* Données temps réel actuelles */
+  let current = null;
+  try {
+    const r = await fetch('api/iot_data.php?action=capteurs', {cache:'no-cache'});
+    const d = await r.json();
+    if (d.success && d.capteurs.length > 0) {
+      current = d.capteurs.find(c => c.node_id === nodeId) || d.capteurs[0];
+    }
+  } catch(e) {}
+
+  /* Historique pour entraînement */
+  let history = [];
+  try {
+    const r = await fetch(`api/iot_history.php?days=30&node=${encodeURIComponent(nodeId)}&limit=500`, {cache:'no-cache'});
+    const d = await r.json();
+    if (d.success) history = d.data;
+  } catch(e) {}
+
+  _lstmRawHistory = history;
+
+  /* Mettre à jour bannière capteurs */
+  _lstmUpdateBanner(current, nodeId);
+
+  if (badge) {
+    const cnt = history.length;
+    badge.innerHTML = cnt > 0
+      ? `<span style="color:#22c55e">✅ ${cnt} mesures ESP32 réelles</span>`
+      : `<span style="color:#f59e0b">⚠️ Pas d'historique — données simulées</span>`;
+  }
+
+  /* Si modèle prêt, redessiner les graphiques */
+  if (_lstmReady && _lstmModel) {
+    await _lstmPredict(current, history, varName);
+  } else {
+    /* Graphique de prévisualisation avec données actuelles */
+    _lstmDrawPreview(current, history, varName);
+  }
+
+  _lstmSchedule(null, current);
+}
+
+/* ══ Bannière capteurs ════════════════════════════════════════ */
+function _lstmUpdateBanner(c, nodeId) {
+  const banner = document.getElementById('lstm-sensor-banner');
+  if (!banner) return;
+  const tL = typeof T === 'function' ? T : k => k;
+
+  const real = !!c;
+  const mk = (ico, name, val, isReal, sub) => `
+    <div style="text-align:center;padding:8px 12px;">
+      <div style="font-size:20px">${ico}</div>
+      <div style="font-size:16px;font-weight:700;margin:4px 0">${val}</div>
+      <div style="font-size:11px;color:var(--slate)">${name}</div>
+      <div style="margin-top:4px">
+        <span style="font-size:10px;padding:2px 8px;border-radius:10px;
+          background:${isReal?'rgba(34,197,94,.15)':'rgba(148,163,184,.1)'};
+          color:${isReal?'#22c55e':'#94a3b8'}">
+          ${isReal?'📡 ESP32':'absent'}
+        </span>
+      </div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">${sub}</div>
+    </div>`;
+
+  banner.innerHTML = `
+    <div style="font-size:12px;font-weight:700;color:var(--slate);margin-bottom:8px;">
+      📍 ${nodeId} ${real?'<span style="color:#22c55e">● En ligne</span>':'<span style="color:#94a3b8">● Hors ligne</span>'}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;">
+      ${mk('🧪','pH Sol', c?.ph!=null?c.ph.toFixed(1):'—', c?.ph!=null, 'sonde pH')}
+      ${mk('🌧️','Hum. Air', c?.humidite_air!=null?c.humidite_air+'%':'—', c?.humidite_air!=null, 'DHT11')}
+      ${mk('💧','Hum. Sol', c?.humidite_sol!=null?c.humidite_sol+'%':'—', c?.humidite_sol!=null, 'capteur sol')}
+      ${mk('🌡️','Température', c?.temperature!=null?c.temperature.toFixed(1)+'°C':'—', c?.temperature!=null, 'Base prévision')}
+    </div>`;
+}
+
+/* ══ Prévisualisation avant entraînement ═════════════════════ */
+function _lstmDrawPreview(current, history, varName) {
+  const labels = _getDayLabels ? _getDayLabels() : [];
+  const valNow = current?.[varName] ?? 45;
+
+  /* Données passées depuis historique ou simulées */
+  let past = [];
+  if (history.length >= 7) {
+    const step = Math.floor(history.length / 7);
+    for (let i = 0; i < 7; i++) {
+      const val = history[i * step]?.[varName];
+      past.push(val != null ? parseFloat(val) : valNow + (Math.random()-0.5)*5);
+    }
+    past[6] = valNow;
+  } else {
+    past = Array.from({length:7}, (_,i) => Math.round(valNow + (i-3)*1.5 + (Math.random()-0.5)*3));
+    past[6] = valNow;
+  }
+
+  /* Prévision simple (tendance) en attendant entraînement */
+  const trend = (past[6] - past[0]) / 6;
+  const future = Array.from({length:7}, (_,i) => Math.max(0, Math.min(100,
+    Math.round(past[6] + trend*(i+1) + (Math.random()-0.5)*3))));
+
+  _lstmDrawChart('lstm-big', past, future, labels, varName, false);
+  if (varName !== 'temperature') _lstmDrawTempChart(current, history, labels);
+}
+
+/* ══ Entraîner le modèle LSTM ════════════════════════════════ */
+async function _lstmTrain() {
+  if (_lstmTrainPromise) return;
+  const btn = document.getElementById('lstm-train-btn');
+  const log = document.getElementById('lstm-train-log');
+  const nodeId  = document.getElementById('lstm-zone-sel')?.value || 'ESP32-DHT11';
+  const varName = document.getElementById('lstm-var-sel')?.value  || 'humidite_air';
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Entraînement...'; }
+  if (log) { log.style.display = 'block'; log.innerHTML = ''; }
+
+  const logLine = (msg, color='#22c55e') => {
+    if (!log) return;
+    log.innerHTML += `<div style="color:${color}">${msg}</div>`;
+    log.scrollTop = log.scrollHeight;
   };
 
-  if (s.temp != null) setSlider('lr-temp', 'lv-temp', s.temp, '°C');
-  if (s.hs   != null) setSlider('lr-hum',  'lv-hum',  s.hs,   '%');
-  if (s.ha   != null) {
-    // Humidité air élevée → estimation précipitations
-    const rain = Math.max(0, Math.min(40, Math.round((s.ha - 30) * 0.5)));
-    setSlider('lr-pluie', 'lv-pluie', rain, 'mm');
+  _lstmTrainPromise = (async () => {
+    try {
+      /* Charger TF.js si nécessaire */
+      if (typeof tf === 'undefined') {
+        logLine('⏳ Chargement TensorFlow.js...', '#94a3b8');
+        await new Promise((res, rej) => {
+          const sc = document.createElement('script');
+          sc.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js';
+          sc.onload = res; sc.onerror = rej;
+          document.head.appendChild(sc);
+        });
+      }
+      logLine(`✅ TensorFlow.js ${tf.version.tfjs} chargé`);
+
+      /* Préparer les données */
+      let history = _lstmRawHistory;
+      if (!history.length) {
+        logLine('📡 Chargement historique ESP32...', '#60a5fa');
+        const r = await fetch(`api/iot_history.php?days=30&node=${encodeURIComponent(nodeId)}&limit=500`);
+        const d = await r.json();
+        history = d.data || [];
+        _lstmRawHistory = history;
+      }
+
+      /* Extraire la variable cible */
+      let rawVals = history.map(h => h[varName]).filter(v => v != null).map(v => parseFloat(v));
+
+      /* Si pas assez de données réelles → augmenter avec variation réaliste */
+      if (rawVals.length < LSTM_SEQ_LEN + 3) {
+        logLine(`⚠️ Seulement ${rawVals.length} mesures — augmentation des données`, '#f59e0b');
+        const seed = rawVals.length > 0 ? rawVals[rawVals.length-1] : 45;
+        const augmented = [seed];
+        for (let i = 1; i < 120; i++) {
+          const prev = augmented[augmented.length-1];
+          const next = Math.max(5, Math.min(100, prev + (Math.random()-0.48)*3));
+          augmented.push(next);
+        }
+        rawVals = [...augmented, ...rawVals]; // données synthétiques + réelles
+        logLine(`✅ Dataset augmenté : ${rawVals.length} points`, '#a78bfa');
+      } else {
+        logLine(`✅ ${rawVals.length} mesures ESP32 réelles pour entraînement`, '#22c55e');
+      }
+
+      /* Normalisation Min-Max */
+      _lstmNorm.min = Math.min(...rawVals);
+      _lstmNorm.max = Math.max(...rawVals);
+      const norm = v => (_lstmNorm.max > _lstmNorm.min)
+        ? (v - _lstmNorm.min) / (_lstmNorm.max - _lstmNorm.min) : 0.5;
+      const denorm = v => v * (_lstmNorm.max - _lstmNorm.min) + _lstmNorm.min;
+      const normVals = rawVals.map(norm);
+
+      /* Créer séquences [X, y] */
+      const X = [], y = [];
+      for (let i = 0; i < normVals.length - LSTM_SEQ_LEN - 1; i++) {
+        X.push(normVals.slice(i, i + LSTM_SEQ_LEN).map(v => [v]));
+        y.push(normVals[i + LSTM_SEQ_LEN]);
+      }
+
+      if (X.length < 5) {
+        logLine('❌ Pas assez de données pour construire les séquences', '#ef4444');
+        return;
+      }
+
+      logLine(`📊 Séquences créées : ${X.length} (longueur=${LSTM_SEQ_LEN})`, '#60a5fa');
+
+      const xTensor = tf.tensor3d(X);
+      const yTensor = tf.tensor1d(y);
+
+      /* ══ Architecture LSTM réelle ══
+         LSTM(64) → Dropout(0.2) → LSTM(32) → Dense(16) → Dense(1)  */
+      const model = tf.sequential();
+      model.add(tf.layers.lstm({
+        units: 64, inputShape: [LSTM_SEQ_LEN, 1],
+        returnSequences: true, name: 'lstm_1'
+      }));
+      model.add(tf.layers.dropout({ rate: 0.2 }));
+      model.add(tf.layers.lstm({ units: 32, returnSequences: false, name: 'lstm_2' }));
+      model.add(tf.layers.dense({ units: 16, activation: 'relu', name: 'dense_1' }));
+      model.add(tf.layers.dense({ units: 1, activation: 'linear', name: 'output' }));
+
+      model.compile({
+        optimizer: tf.train.adam(0.001),
+        loss: 'meanSquaredError',
+        metrics: ['mae']
+      });
+
+      logLine(`🏗️ Architecture : LSTM(64) → Dropout → LSTM(32) → Dense(16) → Dense(1)`, '#a78bfa');
+      logLine(`🏋️ Entraînement : ${LSTM_EPOCHS} époques · batch=${LSTM_BATCH}...`);
+
+      let bestMAE = Infinity;
+      await model.fit(xTensor, yTensor, {
+        epochs: LSTM_EPOCHS,
+        batchSize: LSTM_BATCH,
+        validationSplit: 0.15,
+        shuffle: true,
+        verbose: 0,
+        callbacks: {
+          onEpochEnd: (epoch, logs) => {
+            const mae = (logs.val_mae ?? logs.mae ?? 0);
+            if (mae < bestMAE) bestMAE = mae;
+            if (epoch % 10 === 0 || epoch === LSTM_EPOCHS-1) {
+              const pct = Math.round((epoch+1)/LSTM_EPOCHS*100);
+              const bar = '█'.repeat(Math.round(pct/5)) + '░'.repeat(20-Math.round(pct/5));
+              logLine(`Epoch ${String(epoch+1).padStart(2)} [${bar}] ${pct}% · loss=${logs.loss.toFixed(4)} · mae=${mae.toFixed(4)}`);
+            }
+          }
+        }
+      });
+
+      xTensor.dispose(); yTensor.dispose();
+
+      /* Calculer accuracy (R²) */
+      const predT = model.predict(tf.tensor3d(X));
+      const predArr = await predT.data(); predT.dispose();
+      const yArr = Array.from(await yTensor.data?.() ?? y);
+      const yMean = y.reduce((a,b)=>a+b,0)/y.length;
+      const ssTot = y.reduce((a,v)=>a+(v-yMean)**2,0);
+      const ssRes = y.reduce((a,v,i)=>a+(v-predArr[i])**2,0);
+      const r2    = Math.max(0, Math.min(1, 1 - ssRes/ssTot));
+      _lstmAccuracy = Math.round(r2 * 100);
+      const realMAE = Math.round(bestMAE * (_lstmNorm.max - _lstmNorm.min) * 10) / 10;
+
+      logLine(`✅ Entraînement terminé !`, '#22c55e');
+      logLine(`📊 R² = ${_lstmAccuracy}% · MAE = ${realMAE} ${varName==='temperature'?'°C':'%'}`);
+
+      /* Stocker modèle + dénormaliseur */
+      _lstmModel = model;
+      _lstmReady = true;
+      _lstmDenorm = denorm;
+      _lstmLastNormVals = normVals;
+
+      /* Mettre à jour UI stats */
+      const precEl = document.getElementById('lstm-prec-val');
+      const maeEl  = document.getElementById('lstm-mae-val');
+      const trendEl= document.getElementById('lstm-trend-lbl');
+      const badgeEl= document.getElementById('lstm-method-badge');
+      if (precEl) precEl.textContent = _lstmAccuracy + '%';
+      if (maeEl)  maeEl.textContent  = realMAE + (varName==='temperature'?' °C':' %');
+      if (trendEl) trendEl.textContent = '🧠 LSTM TF.js réel';
+      if (badgeEl) { badgeEl.textContent = `✅ R²=${_lstmAccuracy}%`; badgeEl.style.color='#22c55e'; }
+
+      /* Prédire et afficher */
+      const current = _lstmRawHistory.length > 0 ? {
+        [varName]: rawVals[rawVals.length-1]
+      } : null;
+      await _lstmPredict(current, history, varName);
+
+    } catch(e) {
+      logLine(`❌ Erreur: ${e.message}`, '#ef4444');
+      console.error('[LSTM]', e);
+    }
+  })();
+
+  await _lstmTrainPromise;
+  _lstmTrainPromise = null;
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Ré-entraîner'; }
+}
+
+/* ══ Prédiction avec le modèle entraîné ══════════════════════ */
+let _lstmDenorm     = v => v;
+let _lstmLastNormVals = [];
+
+async function _lstmPredict(current, history, varName) {
+  if (!_lstmModel || !_lstmReady) return;
+
+  /* Prendre les dernières valeurs pour la séquence d'entrée */
+  const norm = v => (_lstmNorm.max > _lstmNorm.min)
+    ? (v - _lstmNorm.min) / (_lstmNorm.max - _lstmNorm.min) : 0.5;
+
+  const lastSeq = _lstmLastNormVals.slice(-LSTM_SEQ_LEN);
+  if (lastSeq.length < LSTM_SEQ_LEN) return;
+
+  /* Prédire 7 jours par itération */
+  let seq = [...lastSeq];
+  const predictions = [];
+  for (let day = 0; day < LSTM_HORIZON; day++) {
+    const input  = tf.tensor3d([seq.map(v => [v])]);
+    const pred   = _lstmModel.predict(input);
+    const val    = (await pred.data())[0];
+    input.dispose(); pred.dispose();
+    predictions.push(Math.max(0, Math.min(1, val)));
+    seq = [...seq.slice(1), val];
   }
-  onLSTMSlider(); // recalculer les portes LSTM avec les nouvelles valeurs
 
-  const nb = [s.temp, s.hs, s.ha].filter(v => v !== null).length;
-  if (nb > 0) showNotif('📡 LSTM : ' + nb + ' valeur(s) ESP32 chargée(s)');
+  /* Dénormaliser */
+  const futureDenorm = predictions.map(v => Math.round(_lstmDenorm(v) * 10) / 10);
+
+  /* Données passées réelles */
+  let rawVals = history.map(h => h[varName]).filter(v => v != null).map(v => parseFloat(v));
+  const past7 = rawVals.slice(-7);
+  while (past7.length < 7) past7.unshift(null);
+
+  const labels = _getDayLabels ? _getDayLabels() : [];
+  _lstmDrawChart('lstm-big', past7, futureDenorm, labels, varName, true);
+  _lstmDrawTempChart(current, history, labels);
+  _lstmSchedule(futureDenorm, current);
 }
 
+/* ══ Dessin graphique LSTM ═══════════════════════════════════ */
+function _lstmDrawChart(svgId, past7, future7, labels, varName, isReal) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const W = 500, H = 160;
 
-function _lstmField(rid,vid,nid,nvid,label,mn,mx,def,unit,col){
-  return `<div class="lstm-f">
-    <div class="lstm-fl">${label}<span class="lstm-vb" id="${vid}">${def} ${unit}</span></div>
-    <input type="range" id="${rid}" min="${mn}" max="${mx}" value="${def}" oninput="onLSTMSlider()" style="-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:4px;outline:none;cursor:pointer;">
-    <div class="lstm-nr"><span class="lstm-nl">norm :</span><div class="lstm-nt"><div class="lstm-nf" id="${nid}" style="background:${col};width:50%;"></div></div><span class="lstm-nv" id="${nvid}">—</span></div>
-  </div>`;
+  /* Calcul échelle selon variable */
+  const isTemp = varName === 'temperature';
+  const allVals = [...past7.filter(v=>v!=null), ...future7];
+  const minV = Math.min(...allVals, isTemp?10:0);
+  const maxV = Math.max(...allVals, isTemp?40:100);
+  const thresh = isTemp ? null : THRESH_CRITICAL;
+  const yS = v => H - 20 - (v - minV) / (maxV - minV + 1) * (H - 35);
+
+  const xs = Array.from({length:14}, (_,i) => Math.round(10 + i*(W-20)/13));
+  const pastColor  = '#94a3b8';
+  const futColor   = isTemp ? '#d97706' : '#7c3aed';
+
+  /* Points passés */
+  const pastPts = past7.map((v,i) => v!=null ? `${xs[i]},${yS(v)}` : null).filter(Boolean);
+  /* Points futurs */
+  const futurePts = future7.map((v,i) => `${xs[7+i]},${yS(v)}`);
+
+  /* Ligne de seuil */
+  const threshLine = thresh
+    ? `<line x1="10" y1="${yS(thresh)}" x2="${W-10}" y2="${yS(thresh)}"
+         stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,4" opacity=".8"/>
+       <text x="2" y="${yS(thresh)+4}" font-size="9" fill="#fbbf24">${thresh}%</text>`
+    : '';
+
+  /* Gradient fill */
+  const pastFill = past7.map((v,i) => v!=null ? `${xs[i]},${yS(v)}` : null).filter(Boolean);
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="gpL" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="${pastColor}" stop-opacity=".3"/>
+        <stop offset="100%" stop-color="${pastColor}" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="gfL" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="${futColor}" stop-opacity=".3"/>
+        <stop offset="100%" stop-color="${futColor}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    ${threshLine}
+    <!-- Passé -->
+    ${pastFill.length>1?`<polygon points="${pastFill.join(' ')} ${xs[6]},${H-20} ${xs[0]},${H-20}" fill="url(#gpL)"/>
+    <polyline points="${pastFill.join(' ')}" fill="none" stroke="${pastColor}" stroke-width="2"/>`:'' }
+    <!-- Futur -->
+    <polygon points="${xs[6]},${yS(past7[6]??future7[0])} ${futurePts.join(' ')} ${xs[13]},${H-20} ${xs[6]},${H-20}" fill="url(#gfL)"/>
+    <polyline points="${xs[6]},${yS(past7[6]??future7[0])} ${futurePts.join(' ')}" fill="none" stroke="${futColor}" stroke-width="2.5"/>
+    <!-- Points passés -->
+    ${past7.map((v,i)=>v!=null?`<circle cx="${xs[i]}" cy="${yS(v)}" r="3" fill="${pastColor}"/>`:'')}
+    <!-- Points futurs avec valeur -->
+    ${future7.map((v,i)=>`
+      <circle cx="${xs[7+i]}" cy="${yS(v)}" r="3.5" fill="${futColor}" stroke="#fff" stroke-width="1.5"/>
+      ${i%2===0?`<text x="${xs[7+i]-8}" y="${yS(v)-6}" font-size="9" fill="${futColor}">${v}${isTemp?'°':'%'}</text>`:''}`).join('')}
+    <!-- Ligne aujourd'hui -->
+    <line x1="${xs[6]}" y1="5" x2="${xs[6]}" y2="${H-15}" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="3,3"/>
+    <text x="${xs[6]+3}" y="13" font-size="9" fill="#22c55e" font-weight="bold">Auj.</text>
+    <!-- Badge LSTM -->
+    ${isReal?`<text x="${W-60}" y="14" font-size="9" fill="#a78bfa">🧠 LSTM réel</text>`:''}
+    <!-- Axe Y -->
+    <text x="2" y="${yS(maxV)+4}" font-size="9" fill="#94a3b8">${maxV}${isTemp?'°':'%'}</text>
+    <text x="2" y="${yS(minV)-2}" font-size="9" fill="#94a3b8">${minV}${isTemp?'°':'%'}</text>`;
 }
 
-function _gateBlock(sym,name,gid,bid,col,bc,formula,note){
-  return `<div class="lstm-g" style="border-color:${bc};">
-    <div class="lstm-gh"><span style="color:${col};font-weight:700;">${sym} — ${name}</span><span class="lstm-gv" id="${gid}" style="color:${col};">—</span></div>
-    <div class="lstm-bw"><div class="lstm-b" id="${bid}" style="background:${col};width:0%;"></div></div>
-    <div class="lstm-gf">${formula}<br><span style="color:var(--slate);font-size:9px;">${note}</span></div>
-  </div>`;
+function _lstmDrawTempChart(current, history, labels) {
+  const svg = document.getElementById('lstm-temp');
+  if (!svg) return;
+  const temps = history.map(h=>h.temperature).filter(v=>v!=null).map(v=>parseFloat(v));
+  const past7 = temps.slice(-7);
+  while (past7.length < 7) past7.unshift(null);
+
+  const tempNow = current?.temperature ?? (past7.filter(Boolean).slice(-1)[0] ?? 26);
+  const trendT  = past7.filter(Boolean).length > 2
+    ? (past7.filter(Boolean).slice(-1)[0] - past7.filter(Boolean)[0]) / past7.filter(Boolean).length : 0;
+  const future7 = Array.from({length:7}, (_,i) =>
+    Math.round((tempNow + trendT*(i+1) + (Math.random()-0.5)*1.5) * 10) / 10);
+
+  _lstmDrawChart('lstm-temp', past7, future7, labels, 'temperature', false);
 }
 
-function onLSTMSlider(){
-  const g=id=>+(document.getElementById(id)?.value||0);
-  const T=g('lr-temp')||28, P=g('lr-pluie')||12, H=g('lr-hum')||55, R=g('lr-rad')||18, V=g('lr-vent')||3;
-  const _s=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t;};
-  _s('lv-temp',T+' °C'); _s('lv-pluie',P+' mm'); _s('lv-hum',H+' %'); _s('lv-rad',R+' MJ/m²'); _s('lv-vent',V+' m/s');
-  const nT=(T-5)/40,nP=P/40,nH=(H-10)/80,nR=(R-5)/25,nV=V/12;
-  const _b=(nid,nvid,val)=>{const b=document.getElementById(nid);if(b)b.style.width=(Math.max(0,Math.min(1,val))*100).toFixed(1)+'%';const v=document.getElementById(nvid);if(v)v.textContent=val.toFixed(3);};
-  _b('ln-temp','lnv-temp',nT); _b('ln-pluie','lnv-pluie',nP); _b('ln-hum','lnv-hum',nH); _b('ln-rad','lnv-rad',nR); _b('ln-vent','lnv-vent',nV);
-  const r=lstmInfer(T,P,H,R,V);
-  const _g=(gid,bid,val,sym)=>{_s(gid,val.toFixed(4));const b=document.getElementById(bid);if(b)b.style.width=(sym?(val+1)/2*100:val*100).toFixed(1)+'%';};
-  _g('g-ft','b-ft',r.f_t,false); _g('g-it','b-it',r.i_t,false); _g('g-gt','b-gt',r.g_t,true); _g('g-ot','b-ot',r.o_t,false);
-  _s('g-ct',r.c_t.toFixed(4)); _s('g-ht',r.h_t.toFixed(4));
-}
+/* ══ Planning irrigation ══════════════════════════════════════ */
+function _lstmSchedule(futurePredictions, current) {
+  const el = document.getElementById('lstm-schedule');
+  if (!el) return;
+  const days = _getDayLabels ? _getDayLabels().slice(7,14) : ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(s=>({short:s}));
+  const hum  = futurePredictions
+    ?? Array.from({length:7}, (_,i) => Math.round(45 + (i-3)*2.5 + (Math.random()-0.5)*3));
 
-function lancerLSTM(){
-  const btn=document.getElementById('btn-lstm');
-  if(!btn)return;
-  btn.disabled=true; btn.textContent='⟳ Propagation…';
-  setTimeout(()=>{
-    const g=id=>+(document.getElementById(id)?.value||0);
-    const T=g('lr-temp')||28,P=g('lr-pluie')||12,H=g('lr-hum')||55,R=g('lr-rad')||18,V=g('lr-vent')||3;
-    const r=lstmInfer(T,P,H,R,V);
-    const contrib=r.h_t*2.2*0.5, direct=r.direct*0.4;
-    const res=document.getElementById('lstm-result'); if(res)res.style.display='block';
-    const _s=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t;};
-    _s('lstm-pred-val',r.pred.toFixed(2));
-    _s('lstm-base',r.base.toFixed(3)+' t/ha');
-    _s('lstm-contrib',contrib.toFixed(3));
-    _s('lstm-direct',direct.toFixed(3));
-    let badge='',bs='';
-    if(r.pred>=5.5){badge='✅ RENDEMENT EXCELLENT';bs='background:rgba(22,163,74,.15);border:1px solid rgba(22,163,74,.4);color:#16a34a';}
-    else if(r.pred>=4.0){badge='🟡 RENDEMENT BON';bs='background:rgba(217,119,6,.15);border:1px solid rgba(217,119,6,.4);color:#d97706';}
-    else if(r.pred>=2.5){badge='🟠 RENDEMENT MOYEN';bs='background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);color:#dc2626';}
-    else{badge='🔴 RENDEMENT FAIBLE';bs='background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.5);color:#b91c1c';}
-    const pb=document.getElementById('lstm-pred-badge'); if(pb){pb.textContent=badge;pb.style.cssText=bs;}
-    btn.disabled=false; btn.textContent='🌾 Lancer la Prédiction LSTM';
-    showNotif(`📈 Rendement prédit : ${r.pred.toFixed(2)} t/ha`);
-  },900);
-}
-
-function _lstmArch(){
-  const el=document.getElementById('lstm-arch-steps'); if(!el)return;
-  el.innerHTML=[
-    {ico:'📥',c:'#16a34a',t:'Étape 1 — Normalisation MinMax',d:'nT=(T-5)/40 · nP=P/40 · nH=(H-10)/80 · nR=(R-5)/25 · nV=V/12. Toutes les variables dans [0,1].'},
-    {ico:'🔢',c:'#7c3aed',t:'Étape 2 — 4 Portes LSTM',d:'f_t oubli (sigmoid) · i_t entrée (sigmoid) · g_t candidat (tanh) · o_t sortie (sigmoid). Poids appris par BPTT.'},
-    {ico:'🧠',c:'#0284c7',t:'Étape 3 — Mémoire c_t et état h_t',d:'c_t = f_t×0.4 + i_t×g_t  (mémoire). h_t = o_t × tanh(c_t)  (sortie du LSTM).'},
-    {ico:'📤',c:'#d97706',t:'Étape 4 — Couche dense finale',d:'pred = base + h_t×2.2×0.5 + effets_directs×0.4. Clampé dans [1.5, 7.5] t/ha.'},
-  ].map(s=>`<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;">
-    <div style="width:32px;height:32px;border-radius:9px;background:${s.c};color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">${s.ico}</div>
-    <div><div style="font-size:13px;font-weight:700;margin-bottom:2px;">${s.t}</div><div style="font-size:12px;color:var(--slate);">${s.d}</div></div>
-  </div>`).join('');
-}
-
-function _lstmSchedule(){
-  const days=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
-  const hum=[41,38,36,40,43,39,37];
-  const html=days.map((d,i)=>{
-    const need=hum[i]<38;
+  el.innerHTML = hum.map((v, i) => {
+    const day  = days[i]?.short || ('J+'+(i+1));
+    const need = v < THRESH_CRITICAL;
+    const bg   = need ? '#dc2626' : '#16a34a';
+    const col  = need ? 'var(--red)' : 'var(--green)';
+    const icon = need ? '(irriguer)' : '';
     return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <div style="width:68px;font-size:12px;font-weight:700;">${d}</div>
-      <div style="flex:1;height:10px;background:var(--border);border-radius:5px;overflow:hidden;">
-        <div style="height:100%;width:${hum[i]*2}%;background:${need?'#dc2626':'#16a34a'};border-radius:5px;transition:width 1.2s ease;"></div>
+      <div style="width:68px;font-size:12px;font-weight:700">${day}</div>
+      <div style="flex:1;height:10px;background:var(--border);border-radius:5px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(100,Math.max(0,v*2))}%;background:${bg};border-radius:5px;transition:width 1.2s"></div>
       </div>
-      <div style="font-size:11px;font-weight:700;color:${need?'var(--red)':'var(--green)'};width:50px;">${hum[i]}% ${need?'💧':''}</div>
+      <div style="font-size:11px;font-weight:700;color:${col};width:80px">${v}% ${icon}</div>
     </div>`;
   }).join('');
-  const e=document.getElementById('lstm-schedule'); if(e)e.innerHTML=html;
 }

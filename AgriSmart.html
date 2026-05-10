@@ -1889,53 +1889,6 @@ html.dark .chat-input-row{background:#1e293b;}
             </div>
           </div>
 
-          <!-- Statut LoRaWAN -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-icon" style="background:#e0f2fe;">📶</div>
-              <h3>Réseau LoRaWAN</h3>
-              <span class="badge bg-blue" style="margin-left:auto;">LoRa</span>
-            </div>
-            <div class="card-body">
-              <div class="lora-diagram">
-                <div class="lora-node">
-                  <div class="lora-icon" style="background:#f0fdf4;">📟</div>
-                  <div style="color:var(--green);font-weight:800;">ESP32</div>
-                  <div class="lora-label">Capteurs terrain</div>
-                </div>
-                <div class="lora-arrow">→</div>
-                <div class="lora-node">
-                  <div class="lora-icon" style="background:#e0f2fe;">📡</div>
-                  <div style="color:var(--blue);font-weight:800;">Gateway</div>
-                  <div class="lora-label">LoRaWAN 868MHz</div>
-                </div>
-                <div class="lora-arrow">→</div>
-                <div class="lora-node">
-                  <div class="lora-icon" style="background:#ede9fe;">☁️</div>
-                  <div style="color:var(--violet);font-weight:800;">Cloud</div>
-                  <div class="lora-label">Serveur MQTT</div>
-                </div>
-                <div class="lora-arrow">→</div>
-                <div class="lora-node">
-                  <div class="lora-icon" style="background:#fef3c7;">🧠</div>
-                  <div style="color:var(--amber);font-weight:800;">IA</div>
-                  <div class="lora-label">RF + LSTM</div>
-                </div>
-              </div>
-              <div id="lora-devices"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Architecture IA -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-icon" style="background:#fef3c7;">🧠</div>
-            <h3>Architecture IA du Système — Comment ça marche ?</h3>
-          </div>
-          <div class="card-body">
-            <div id="arch-layers"></div>
-          </div>
         </div>
 
       </div><!-- /dashboard -->
@@ -2063,9 +2016,8 @@ html.dark .chat-input-row{background:#1e293b;}
           <div class="stat-card"><div class="stat-icon" style="background:#ede9fe;">📨</div><div class="stat-body"><div class="stat-val" style="color:var(--violet);">10s</div><div class="stat-label">Intervalle envoi</div></div></div>
         </div>
 
-        <div class="g2" style="margin-bottom:20px;">
-          <!-- Carte des nœuds -->
-          <div class="card">
+        <!-- Carte des nœuds (pleine largeur) -->
+        <div class="card" style="margin-bottom:20px;">
             <div class="card-header">
               <div class="card-icon" style="background:#f0fdf4;">🗺️</div>
               <h3>Carte des Capteurs Terrain</h3>
@@ -2083,16 +2035,6 @@ html.dark .chat-input-row{background:#1e293b;}
               <div style="margin-top:16px;" id="node-list"></div>
             </div>
           </div>
-
-          <!-- Schéma LoRa -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-icon" style="background:#e0f2fe;">🔗</div>
-              <h3>Architecture LoRaWAN — De la Plante au Cloud</h3>
-            </div>
-            <div class="card-body" id="lora-arch-body"></div>
-          </div>
-        </div>
 
         <!-- Config ESP32 -->
         <div class="card">
@@ -2395,6 +2337,57 @@ fr:{
   navHistoryTech:'Données',
   cnnZoneA:'Zone A — Nord', cnnZoneB:'Zone B — Centre', cnnZoneC:'Zone C — Sud',
   cnnZoneD:'Zone D — Est', cnnZoneE:'Zone E — Ouest', cnnZoneF:'Zone F — Serre',
+  /* ── CNN page — TOUS les textes ── */
+  cnnPageTitle:'Analyse CNN — Zones Agricoles',
+  cnnCardTitle:'🛰️ Analyse CNN — Satellite GPS',
+  cnnChooseCulture:'-- Choisir une culture --',
+  cnnAnalyse:'⚡ Analyser',
+  cnnCharger:'🔄 Données',
+  cnnVueSat:'🛰️ Vue Satellite',
+  cnnGpsReel:'🛰️ GPS réel',
+  cnnCoordOran:'📐 Coordonnées Oran',
+  cnnResultats:'Résultats CNN',
+  cnnTFPret:'🧠 TF.js — prêt',
+  cnnIdleMsg:"Choisissez une culture et lancez l'analyse",
+  cnnChooseWarn:'⚠️ Choisissez une culture',
+  cnnNoeuds:'nœud(s)',
+  cnnMySQLBadge:'✅ MySQL —',
+  cnnOfflineBadge:'📴 Données locales',
+  /* Boutons carte */
+  cnnBtnSat:'🛰️ Satellite',
+  cnnBtnHybrid:'🛰️+Labels',
+  cnnBtnPlan:'🗺️ Plan',
+  cnnBtnTerrain:'🏔️ Terrain',
+  cnnBtnCentrer:'🎯 Centrer',
+  cnnBtnFullscreen:'⛶ Plein écran',
+  /* Légende carte */
+  cnnLegOptimal:'Optimal ≥72%',
+  cnnLegAccept:'Acceptable 48–71%',
+  cnnLegIncompat:'Incompatible <48%',
+  cnnLegNonAna:'Non analysé',
+  /* Niveaux CNN */
+  cnnNivOptimal:'Optimal',
+  cnnNivAccept:'Acceptable',
+  cnnNivIncompat:'Incompatible',
+  /* Labels paramètres panneau gauche */
+  cnnParamTemp:'🌡️ Température',
+  cnnParamHS:'💧 Humidité sol',
+  cnnParamHA:'🌧️ Hum. air',
+  cnnParamPH:'🧪 pH',
+  cnnParamN:'🌿 Azote',
+  cnnParamP:'⚗️ Phosphore',
+  cnnParamK:'🔬 Potassium',
+  cnnParamLux:'☀️ Luminosité',
+  cnnParamCO2:'💨 CO₂',
+  /* Badge GPS popup */
+  cnnGpsSimule:'📐 Coordonnées simulées',
+  /* Noms des cultures CNN (trilingue) */
+  cnnCropTournesol:'🌻 Tournesol', cnnCropBle:'🌾 Blé',      cnnCropMais:'🌽 Maïs',
+  cnnCropTomate:'🍅 Tomate',       cnnCropSoja:'🌱 Soja',     cnnCropRiz:'🌾 Riz',
+  cnnCropCoton:'🌿 Coton',         cnnCropCafe:'☕ Café',     cnnCropPomme:'🥔 Pomme de terre',
+  cnnCropMangue:'🥭 Mangue',       cnnCropPois:'🫘 Pois chiche', cnnCropRaisin:'🍇 Raisin',
+  /* Topbar page CNN */
+  ttCNN:'Analyse CNN — Zones Agricoles',
   /* Stat cards dashboard (générés par JS) */
   statRF:'Précision RF', statLSTM:'Précision LSTM', statSensors:'Capteurs actifs', statBattery:'Autonomie batterie',
   /* Sensor names (générés par JS) */
@@ -2434,7 +2427,69 @@ fr:{
   mPrenom:'Prénom', mNom:'Nom', mLogin:'Identifiant de connexion',
   mPass:'Mot de passe', mRole:'Rôle', mZone:'Zone / Exploitation',
   mTel:'Téléphone', mStatut:'Statut',
-  /* Card headers */
+  /* ── Alias capteurs (noms courts utilisés par _t() / T()) ── */
+  sPh:'pH du Sol', sPhosphore:'Phosphore (P)', sLum:'Luminosité', sCo2:'CO₂',
+  tempLabel:'Température',
+  /* ── Alias statuts (préfixe st) ── */
+  stNormal:'Normal', stBon:'Bon', stCritique:'Critique', stSurveiller:'Surveiller',
+  stAcide:'Acide', stNeutre:'Neutre', stSuffisant:'Suffisant', stOk:'OK',
+  stNonBranche:'Non branché',
+  /* ── LSTM bannière ── */
+  lstmAbsent:'Non branché', lstmBasePrev:'Base prévision',
+  lstmDHT11:'→ DHT11', lstmSeuilCrit:'Seuil: 35%',
+  lstmCapteurSol:'→ capteur sol', lstmEstimPluie:'Estimation pluie', lstmSondePH:'→ sonde pH',
+  /* ── Noms cultures RF (clés courtes) ── */
+  cTournesol:'Tournesol', cBle:'Blé', cMais:'Maïs', cTomate:'Tomate',
+  cSoja:'Soja', cRiz:'Riz', cCoton:'Coton', cCafe:'Café',
+  cPommeDeTerre:'Pomme de terre', cMangue:'Mangue', cPoisChiche:'Pois chiche', cRaisin:'Raisin',
+  /* ── Random Forest résultats ── */
+  rfConfiance:'Confiance', rfHumSol:'Humidité Sol', rfHumAir:'Humidité Air',
+  rfBtn:"Lancer l'Analyse", rfBestZone:'Meilleure Zone',
+  rfVotes:'votes', rfForest:'Random Forest', rfOOB:'acc (OOB)', rfArbres:'arbres',
+  rfCharger:'Charger',
+  /* ── Conseils RF ── */
+  consTagReco:'✅ Recommandé', consPlantez:'Plantez le', consAdaptee:'Culture adaptée à votre terrain.',
+  consIrr:'Irriguez suffisamment.', consEngrais:'Apportez des engrais azotés.',
+  Hint_rain:'Vérifiez la pluviométrie avant plantation.',
+  consHumOk:'Humidité du sol correcte.', consPHOk:'pH du sol optimal.',
+  /* ── Alertes ── */
+  alertNone:'✅ Aucune alerte — Tous les capteurs fonctionnent normalement',
+  adminCharge:'Chargement…',
+  /* ── Labels sliders RF (05_rf.js) ── */
+  rfPh:'pH du Sol', rfAzote:'Azote (N)', rfTemp:'Température',
+  rfPluie:'Précipitations', rfPhosphore:'Phosphore (P)', rfPotassium:'Potassium (K)',
+  rfHumSolLabel:'Humidité Sol', rfHumAirLabel:'Humidité Air',
+  rfKgHa:'kg/ha', rfMm:'mm', rfDegC:'°C',
+  rfZoneLabel:'Zone / Exploitation', rfSelectZone:'Sélectionner une zone',
+  rfResult:'Résultat Random Forest', rfVotesTxt:'votes sur 100',
+  rfImportance:'Importance des Capteurs', rfConseils:'Conseils Personnalisés',
+  rfScore:'Score', rfMeilleure:'Meilleure Zone',
+  rfCultureRec:'Culture Recommandée',
+  /* ── IoT / ESP32 table (07_iot_history.js) ── */
+  iotNoeud:'Nœud', iotZone:'Zone', iotRSSI:'RSSI', iotSF:'SF / Type',
+  iotBatterie:'Batterie', iotStatut:'Statut', iotAction:'Action',
+  iotEnLigne:'✅ En ligne', iotHorsLigne:'✗ Hors ligne (vérifiez ESP32)',
+  iotMesure:'💾 Mesure', iotActualiser:'🔄', iotConfigurer:'⚙️',
+  iotWifi:'WiFi', iotLora:'LoRa',
+  /* ── Historique (07_iot_history.js) ── */
+  histDate:'Date', histNoeud:'Nœud', histZone:'Zone',
+  histTemp:'Temp.', histHS:'Hum. Sol', histHA:'Hum. Air',
+  histPH:'pH', histN:'Azote', histP:'Phosphore', histK:'Potassium',
+  histLux:'Luminosité', histCO2:'CO₂',
+  histAucun:'Aucune donnée disponible',
+  /* ── Timeline / Activité Récente ── */
+  tlCalibration:'Calibration capteurs', tlConnexion:'Connexion ESP32',
+  tlMesure:'Nouvelle mesure', tlAlerte:'Alerte détectée',
+  /* ── LSTM bannière — légende ── */
+  lstmLegGris:'Gris = 7 jours passés',
+  lstmLegViolet:'Violet/Orange = 7 jours prévus',
+  lstmLegJaune:'Jaune pointillé = seuil critique 35% (irriguer)',
+  lstmLegAuj:'📍 = Aujourd\'hui',
+  lstmNonConn:'⚠️ ESP32 non connecté',
+  lstmChargerZone:'Charger',
+  /* ── Jours & Mois (pour LSTM) ── */
+  daysShort:['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'],
+  months:['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
   h3:{
     'Capteurs ESP32 — Données en Direct':'Capteurs ESP32 — Données en Direct',
     'Alertes Actives':'Alertes Actives',
@@ -2483,6 +2538,51 @@ ar:{
   navHistoryTech:'البيانات',
   cnnZoneA:'المنطقة أ — شمال', cnnZoneB:'المنطقة ب — وسط', cnnZoneC:'المنطقة ج — جنوب',
   cnnZoneD:'المنطقة د — شرق', cnnZoneE:'المنطقة هـ — غرب', cnnZoneF:'المنطقة و — دفيئة',
+  /* ── CNN page — TOUS les textes AR ── */
+  cnnPageTitle:'تحليل CNN — المناطق الزراعية',
+  cnnCardTitle:'🛰️ تحليل CNN — الأقمار الاصطناعية GPS',
+  cnnChooseCulture:'-- اختر محصولاً --',
+  cnnAnalyse:'⚡ تحليل',
+  cnnCharger:'🔄 البيانات',
+  cnnVueSat:'🛰️ عرض الأقمار',
+  cnnGpsReel:'🛰️ GPS حقيقي',
+  cnnCoordOran:'📐 إحداثيات وهران',
+  cnnResultats:'نتائج CNN',
+  cnnTFPret:'🧠 TF.js — جاهز',
+  cnnIdleMsg:'اختر محصولاً وشغّل التحليل',
+  cnnChooseWarn:'⚠️ اختر محصولاً',
+  cnnNoeuds:'عقدة',
+  cnnMySQLBadge:'✅ MySQL —',
+  cnnOfflineBadge:'📴 بيانات محلية',
+  cnnBtnSat:'🛰️ أقمار',
+  cnnBtnHybrid:'🛰️+تسميات',
+  cnnBtnPlan:'🗺️ خريطة',
+  cnnBtnTerrain:'🏔️ تضاريس',
+  cnnBtnCentrer:'🎯 توسيط',
+  cnnBtnFullscreen:'⛶ ملء الشاشة',
+  cnnLegOptimal:'مثالي ≥72%',
+  cnnLegAccept:'مقبول 48–71%',
+  cnnLegIncompat:'غير مناسب <48%',
+  cnnLegNonAna:'غير محلَّل',
+  cnnNivOptimal:'مثالي',
+  cnnNivAccept:'مقبول',
+  cnnNivIncompat:'غير مناسب',
+  cnnParamTemp:'🌡️ درجة الحرارة',
+  cnnParamHS:'💧 رطوبة التربة',
+  cnnParamHA:'🌧️ رطوبة الهواء',
+  cnnParamPH:'🧪 pH',
+  cnnParamN:'🌿 النيتروجين',
+  cnnParamP:'⚗️ الفسفور',
+  cnnParamK:'🔬 البوتاسيوم',
+  cnnParamLux:'☀️ الإضاءة',
+  cnnParamCO2:'💨 CO₂',
+  cnnGpsSimule:'📐 إحداثيات محاكاة',
+  /* أسماء المحاصيل CNN (ثلاثية اللغة) */
+  cnnCropTournesol:'🌻 عباد الشمس', cnnCropBle:'🌾 القمح',      cnnCropMais:'🌽 الذرة',
+  cnnCropTomate:'🍅 الطماطم',       cnnCropSoja:'🌱 فول الصويا', cnnCropRiz:'🌾 الأرز',
+  cnnCropCoton:'🌿 القطن',           cnnCropCafe:'☕ القهوة',     cnnCropPomme:'🥔 البطاطس',
+  cnnCropMangue:'🥭 المانجو',        cnnCropPois:'🫘 الحمص',      cnnCropRaisin:'🍇 العنب',
+  ttCNN:'تحليل CNN — المناطق الزراعية',
   statRF:'دقة RF', statLSTM:'دقة LSTM', statSensors:'مستشعرات نشطة', statBattery:'عمر البطارية',
   sTemp:'درجة الحرارة', sHumSol:'رطوبة التربة', sPH:'حموضة التربة', sAzote:'النيتروجين (N)',
   sPhospho:'الفوسفور (P)', sHumAir:'رطوبة الهواء', sLux:'الإضاءة', sCO2:'ثاني أكسيد الكربون',
@@ -2511,6 +2611,65 @@ ar:{
   mPrenom:'الاسم الأول', mNom:'اللقب', mLogin:'معرّف الدخول',
   mPass:'كلمة المرور', mRole:'الدور', mZone:'المنطقة / المزرعة',
   mTel:'الهاتف', mStatut:'الحالة',
+  /* ── Alias capteurs ── */
+  sPh:'حموضة التربة', sPhosphore:'الفوسفور (P)', sLum:'الإضاءة', sCo2:'ثاني أكسيد الكربون',
+  tempLabel:'درجة الحرارة',
+  /* ── Alias statuts ── */
+  stNormal:'طبيعي', stBon:'جيد', stCritique:'حرج', stSurveiller:'مراقبة',
+  stAcide:'حامضي', stNeutre:'محايد', stSuffisant:'كافٍ', stOk:'مقبول',
+  stNonBranche:'غير متصل',
+  /* ── LSTM bannière ── */
+  lstmAbsent:'غير متصل', lstmBasePrev:'قاعدة التنبؤ',
+  lstmDHT11:'→ DHT11', lstmSeuilCrit:'الحد الحرج: 35%',
+  lstmCapteurSol:'→ مستشعر التربة', lstmEstimPluie:'تقدير الأمطار', lstmSondePH:'→ مجسّ pH',
+  /* ── Noms cultures RF ── */
+  cTournesol:'عباد الشمس', cBle:'القمح', cMais:'الذرة', cTomate:'الطماطم',
+  cSoja:'فول الصويا', cRiz:'الأرز', cCoton:'القطن', cCafe:'القهوة',
+  cPommeDeTerre:'البطاطس', cMangue:'المانجو', cPoisChiche:'الحمص', cRaisin:'العنب',
+  /* ── Random Forest ── */
+  rfConfiance:'الثقة', rfHumSol:'رطوبة التربة', rfHumAir:'رطوبة الهواء',
+  rfBtn:'تشغيل التحليل', rfBestZone:'أفضل منطقة',
+  rfVotes:'أصوات', rfForest:'الغابة العشوائية', rfOOB:'دقة (OOB)', rfArbres:'أشجار',
+  rfCharger:'تحميل',
+  /* ── Conseils RF ── */
+  consTagReco:'✅ موصى به', consPlantez:'ازرع', consAdaptee:'المحصول مناسب لأرضك.',
+  consIrr:'اسقِ بكميات كافية.', consEngrais:'أضف أسمدة نيتروجينية.',
+  Hint_rain:'تحقق من الأمطار قبل الزراعة.',
+  consHumOk:'رطوبة التربة مناسبة.', consPHOk:'حموضة التربة مثالية.',
+  alertNone:'✅ لا توجد تنبيهات — جميع المستشعرات تعمل بشكل طبيعي',
+  adminCharge:'جارٍ التحميل…',
+  /* ── Labels sliders RF ── */
+  rfPh:'حموضة التربة', rfAzote:'النيتروجين (N)', rfTemp:'درجة الحرارة',
+  rfPluie:'التساقطات', rfPhosphore:'الفوسفور (P)', rfPotassium:'البوتاسيوم (K)',
+  rfHumSolLabel:'رطوبة التربة', rfHumAirLabel:'رطوبة الهواء',
+  rfKgHa:'كغ/هكتار', rfMm:'مم', rfDegC:'°C',
+  rfZoneLabel:'المنطقة / المزرعة', rfSelectZone:'اختر منطقة',
+  rfResult:'نتيجة الغابة العشوائية', rfVotesTxt:'أصوات من 100',
+  rfImportance:'أهمية المستشعرات', rfConseils:'نصائح مخصصة',
+  rfScore:'النتيجة', rfMeilleure:'أفضل منطقة', rfCultureRec:'المحصول الموصى به',
+  /* ── IoT / ESP32 ── */
+  iotNoeud:'العقدة', iotZone:'المنطقة', iotRSSI:'RSSI', iotSF:'SF / النوع',
+  iotBatterie:'البطارية', iotStatut:'الحالة', iotAction:'إجراء',
+  iotEnLigne:'✅ متصل', iotHorsLigne:'✗ غير متصل (تحقق من ESP32)',
+  iotMesure:'💾 قياس', iotActualiser:'🔄', iotConfigurer:'⚙️',
+  iotWifi:'WiFi', iotLora:'LoRa',
+  /* ── Historique ── */
+  histDate:'التاريخ', histNoeud:'العقدة', histZone:'المنطقة',
+  histTemp:'الحرارة', histHS:'رطوبة التربة', histHA:'رطوبة الهواء',
+  histPH:'pH', histN:'النيتروجين', histP:'الفوسفور', histK:'البوتاسيوم',
+  histLux:'الإضاءة', histCO2:'CO₂', histAucun:'لا توجد بيانات',
+  /* ── Timeline ── */
+  tlCalibration:'معايرة المستشعرات', tlConnexion:'اتصال ESP32',
+  tlMesure:'قياس جديد', tlAlerte:'تنبيه مكتشف',
+  /* ── LSTM bannière ── */
+  lstmLegGris:'رمادي = 7 أيام ماضية',
+  lstmLegViolet:'بنفسجي/برتقالي = 7 أيام قادمة',
+  lstmLegJaune:'منقط أصفر = حد حرج 35% (اسقِ)',
+  lstmLegAuj:'📍 = اليوم',
+  lstmNonConn:'⚠️ ESP32 غير متصل',
+  lstmChargerZone:'تحميل',
+  daysShort:['أحد','إث','ثلا','أرب','خمي','جمع','سبت'],
+  months:['جان','فيف','مار','أفر','ماي','جوان','جوي','أوت','سبت','أكت','نوف','ديس'],
   h3:{
     'Capteurs ESP32 — Données en Direct':'مستشعرات ESP32 — بيانات مباشرة',
     'Alertes Actives':'التنبيهات النشطة',
@@ -2559,6 +2718,51 @@ en:{
   navHistoryTech:'Data',
   cnnZoneA:'Zone A — North', cnnZoneB:'Zone B — Center', cnnZoneC:'Zone C — South',
   cnnZoneD:'Zone D — East', cnnZoneE:'Zone E — West', cnnZoneF:'Zone F — Greenhouse',
+  /* ── CNN page — ALL texts EN ── */
+  cnnPageTitle:'CNN Analysis — Agricultural Zones',
+  cnnCardTitle:'🛰️ CNN Analysis — Satellite GPS',
+  cnnChooseCulture:'-- Choose a crop --',
+  cnnAnalyse:'⚡ Analyse',
+  cnnCharger:'🔄 Data',
+  cnnVueSat:'🛰️ Satellite View',
+  cnnGpsReel:'🛰️ Real GPS',
+  cnnCoordOran:'📐 Oran Coordinates',
+  cnnResultats:'CNN Results',
+  cnnTFPret:'🧠 TF.js — ready',
+  cnnIdleMsg:'Choose a crop and run the analysis',
+  cnnChooseWarn:'⚠️ Choose a crop first',
+  cnnNoeuds:'node(s)',
+  cnnMySQLBadge:'✅ MySQL —',
+  cnnOfflineBadge:'📴 Local data',
+  cnnBtnSat:'🛰️ Satellite',
+  cnnBtnHybrid:'🛰️+Labels',
+  cnnBtnPlan:'🗺️ Map',
+  cnnBtnTerrain:'🏔️ Terrain',
+  cnnBtnCentrer:'🎯 Center',
+  cnnBtnFullscreen:'⛶ Fullscreen',
+  cnnLegOptimal:'Optimal ≥72%',
+  cnnLegAccept:'Acceptable 48–71%',
+  cnnLegIncompat:'Incompatible <48%',
+  cnnLegNonAna:'Not analysed',
+  cnnNivOptimal:'Optimal',
+  cnnNivAccept:'Acceptable',
+  cnnNivIncompat:'Incompatible',
+  cnnParamTemp:'🌡️ Temperature',
+  cnnParamHS:'💧 Soil Moisture',
+  cnnParamHA:'🌧️ Air Humidity',
+  cnnParamPH:'🧪 pH',
+  cnnParamN:'🌿 Nitrogen',
+  cnnParamP:'⚗️ Phosphorus',
+  cnnParamK:'🔬 Potassium',
+  cnnParamLux:'☀️ Luminosity',
+  cnnParamCO2:'💨 CO₂',
+  cnnGpsSimule:'📐 Simulated coordinates',
+  /* CNN crop names (trilingual) */
+  cnnCropTournesol:'🌻 Sunflower',  cnnCropBle:'🌾 Wheat',    cnnCropMais:'🌽 Corn',
+  cnnCropTomate:'🍅 Tomato',        cnnCropSoja:'🌱 Soybean', cnnCropRiz:'🌾 Rice',
+  cnnCropCoton:'🌿 Cotton',         cnnCropCafe:'☕ Coffee',  cnnCropPomme:'🥔 Potato',
+  cnnCropMangue:'🥭 Mango',         cnnCropPois:'🫘 Chickpea', cnnCropRaisin:'🍇 Grape',
+  ttCNN:'CNN Analysis — Agricultural Zones',
   statRF:'RF Accuracy', statLSTM:'LSTM Accuracy', statSensors:'Active sensors', statBattery:'Battery life',
   sTemp:'Temperature', sHumSol:'Soil Moisture', sPH:'Soil pH', sAzote:'Nitrogen (N)',
   sPhospho:'Phosphorus (P)', sHumAir:'Air Humidity', sLux:'Luminosity', sCO2:'CO₂',
@@ -2586,6 +2790,65 @@ en:{
   mPrenom:'First Name', mNom:'Last Name', mLogin:'Login ID',
   mPass:'Password', mRole:'Role', mZone:'Zone / Farm',
   mTel:'Phone', mStatut:'Status',
+  /* ── Sensor aliases ── */
+  sPh:'Soil pH', sPhosphore:'Phosphorus (P)', sLum:'Luminosity', sCo2:'CO₂',
+  tempLabel:'Temperature',
+  /* ── Status aliases ── */
+  stNormal:'Normal', stBon:'Good', stCritique:'Critical', stSurveiller:'Monitor',
+  stAcide:'Acidic', stNeutre:'Neutral', stSuffisant:'Sufficient', stOk:'OK',
+  stNonBranche:'Not connected',
+  /* ── LSTM banner ── */
+  lstmAbsent:'Not connected', lstmBasePrev:'Forecast base',
+  lstmDHT11:'→ DHT11', lstmSeuilCrit:'Threshold: 35%',
+  lstmCapteurSol:'→ soil sensor', lstmEstimPluie:'Rain estimate', lstmSondePH:'→ pH probe',
+  /* ── RF crop names ── */
+  cTournesol:'Sunflower', cBle:'Wheat', cMais:'Corn', cTomate:'Tomato',
+  cSoja:'Soybean', cRiz:'Rice', cCoton:'Cotton', cCafe:'Coffee',
+  cPommeDeTerre:'Potato', cMangue:'Mango', cPoisChiche:'Chickpea', cRaisin:'Grape',
+  /* ── Random Forest ── */
+  rfConfiance:'Confidence', rfHumSol:'Soil Moisture', rfHumAir:'Air Humidity',
+  rfBtn:'Run Analysis', rfBestZone:'Best Zone',
+  rfVotes:'votes', rfForest:'Random Forest', rfOOB:'acc (OOB)', rfArbres:'trees',
+  rfCharger:'Load',
+  /* ── RF advice ── */
+  consTagReco:'✅ Recommended', consPlantez:'Plant', consAdaptee:'Crop adapted to your field.',
+  consIrr:'Water sufficiently.', consEngrais:'Apply nitrogen fertilizers.',
+  Hint_rain:'Check rainfall before planting.',
+  consHumOk:'Soil moisture is adequate.', consPHOk:'Soil pH is optimal.',
+  alertNone:'✅ No alerts — All sensors working normally',
+  adminCharge:'Loading…',
+  /* ── RF slider labels ── */
+  rfPh:'Soil pH', rfAzote:'Nitrogen (N)', rfTemp:'Temperature',
+  rfPluie:'Precipitation', rfPhosphore:'Phosphorus (P)', rfPotassium:'Potassium (K)',
+  rfHumSolLabel:'Soil Moisture', rfHumAirLabel:'Air Humidity',
+  rfKgHa:'kg/ha', rfMm:'mm', rfDegC:'°C',
+  rfZoneLabel:'Zone / Farm', rfSelectZone:'Select a zone',
+  rfResult:'Random Forest Result', rfVotesTxt:'votes out of 100',
+  rfImportance:'Sensor Importance', rfConseils:'Personalized Advice',
+  rfScore:'Score', rfMeilleure:'Best Zone', rfCultureRec:'Recommended Crop',
+  /* ── IoT / ESP32 ── */
+  iotNoeud:'Node', iotZone:'Zone', iotRSSI:'RSSI', iotSF:'SF / Type',
+  iotBatterie:'Battery', iotStatut:'Status', iotAction:'Action',
+  iotEnLigne:'✅ Online', iotHorsLigne:'✗ Offline (check ESP32)',
+  iotMesure:'💾 Measure', iotActualiser:'🔄', iotConfigurer:'⚙️',
+  iotWifi:'WiFi', iotLora:'LoRa',
+  /* ── History ── */
+  histDate:'Date', histNoeud:'Node', histZone:'Zone',
+  histTemp:'Temp.', histHS:'Soil Moist.', histHA:'Air Humid.',
+  histPH:'pH', histN:'Nitrogen', histP:'Phosphorus', histK:'Potassium',
+  histLux:'Luminosity', histCO2:'CO₂', histAucun:'No data available',
+  /* ── Timeline ── */
+  tlCalibration:'Sensor calibration', tlConnexion:'ESP32 connection',
+  tlMesure:'New measurement', tlAlerte:'Alert detected',
+  /* ── LSTM banner legend ── */
+  lstmLegGris:'Grey = past 7 days',
+  lstmLegViolet:'Purple/Orange = next 7 days forecast',
+  lstmLegJaune:'Yellow dashed = critical threshold 35% (irrigate)',
+  lstmLegAuj:'📍 = Today',
+  lstmNonConn:'⚠️ ESP32 not connected',
+  lstmChargerZone:'Load',
+  daysShort:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+  months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
   h3:{
     'Capteurs ESP32 — Données en Direct':'ESP32 Sensors — Live Data',
     'Alertes Actives':'Active Alerts',
@@ -2614,11 +2877,30 @@ en:{
 
 /* ══ LANGUE ══ */
 var _lang='fr';
-try{var sv=localStorage.getItem('as_lang');if(sv&&D[sv])_lang=sv;}catch(e){}
+try{var sv=localStorage.getItem('as_lang')||localStorage.getItem('agrismart_lang');if(sv&&D[sv])_lang=sv;}catch(e){}
 
 function L(){return D[_lang]||D.fr;}
 
+/* ══ T(key) — fonction de traduction globale utilisée par les scripts externes ══
+   Cherche la clé dans le dictionnaire courant, puis en FR, sinon retourne la clé */
+window.T = function(key) {
+  try {
+    const l = D[_lang] || D.fr;
+    if (l[key] !== undefined) return l[key];
+    if (D.fr[key] !== undefined) return D.fr[key];
+  } catch(e) {}
+  return key;
+};
+
 function applyLang(){
+  // Synchroniser _lang de 11_settings.js si différent
+  if (typeof window !== 'undefined') {
+    // Forcer la mise à jour de _lang dans 11_settings si la fonction existe
+    try {
+      var saved = localStorage.getItem('as_lang') || localStorage.getItem('agrismart_lang');
+      if (saved && saved !== _lang) _lang = saved;
+    } catch(e) {}
+  }
   var l=L();
 
   /* topbar live */
@@ -2648,7 +2930,7 @@ function applyLang(){
   if(lnl) lnl.textContent=l.logout;
 
   /* topbar title */
-  var ttMap={dashboard:l.ttDashboard,rf:l.ttRF,lstm:l.ttLSTM,iot:l.ttIoT,history:l.ttHistory,admin:l.ttAdmin,guide:l.ttGuide,cnn:'Analyse CNN — Zones Agricoles'};
+  var ttMap={dashboard:l.ttDashboard,rf:l.ttRF,lstm:l.ttLSTM,iot:l.ttIoT,history:l.ttHistory,admin:l.ttAdmin,guide:l.ttGuide,cnn:l.ttCNN||l.cnnPageTitle||'Analyse CNN — Zones Agricoles'};
   var ttEl=document.getElementById('topbar-title');
   if(ttEl){
     var cur=ttEl.textContent.trim();
@@ -2863,6 +3145,50 @@ function applyLang(){
   document.documentElement.dir=_lang==='ar'?'rtl':'ltr';
   document.documentElement.lang=_lang;
 
+  // CNN éléments
+  var cnnChoose = document.getElementById('cnn-choose-opt');
+  if(cnnChoose) cnnChoose.textContent = L()['cnnChooseCulture']||'-- Choisir une culture --';
+  var cnnRunBtn = document.getElementById('cnn-run-btn');
+  if(cnnRunBtn && cnnRunBtn.dataset.orig !== 'running')
+    cnnRunBtn.innerHTML = (L()['cnnAnalyse']||'⚡ Analyser');
+  var cnnDataBtn = document.getElementById('cnn-data-btn');
+  if(cnnDataBtn) cnnDataBtn.textContent = L()['cnnCharger']||'🔄 Données';
+  var cnnVueSat = document.getElementById('cnn-vuesat-lbl');
+  if(cnnVueSat) cnnVueSat.textContent = L()['cnnVueSat']||'🛰️ Vue Satellite';
+  var cnnResTitle = document.getElementById('cnn-results-title');
+  if(cnnResTitle && !cnnResTitle.dataset.analysed)
+    cnnResTitle.textContent = L()['cnnResultats']||'Résultats CNN';
+  var cnnBadge = document.getElementById('cnn-accuracy-badge');
+  if(cnnBadge && cnnBadge.dataset.trained !== '1')
+    cnnBadge.textContent = L()['cnnTFPret']||'🧠 TF.js — prêt';
+  // Heading CNN principal
+  var cnnHeading = document.getElementById('cnn-main-heading');
+  if(cnnHeading) cnnHeading.textContent = L()['cnnCardTitle']||'🛰️ Analyse CNN — Satellite GPS';
+  // Idle message
+  var cnnIdle = document.querySelector('#cnn-results-body .cnn-idle-msg');
+  if(cnnIdle) cnnIdle.textContent = L()['cnnIdleMsg']||"Choisissez une culture et lancez l'analyse";
+  // Boutons carte via data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n');
+    var v = L()[k];
+    if(v) el.textContent = v;
+  });
+  // Légende CNN via data-i18n spans
+  document.querySelectorAll('.cnn-leg [data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n');
+    var v = L()[k];
+    if(v) el.textContent = v;
+  });
+  // Titres topbar CNN
+  var ttMap2 = {cnn: L()['cnnPageTitle']||'Analyse CNN — Zones Agricoles'};
+  var topbarEl = document.getElementById('topbar-title');
+  if(topbarEl && (typeof state!=='undefined') && state.currentPage==='cnn')
+    topbarEl.textContent = ttMap2.cnn;
+  // Traduction 't-charger' spans (boutons Charger LSTM/RF/CNN)
+  document.querySelectorAll('.t-charger').forEach(function(el){
+    el.textContent = L()['cnnCharger']||'🔄 Données';
+  });
+
   /* sync controls */
   var sel=document.getElementById('lang-select');
   if(sel) sel.value=_lang;
@@ -2876,7 +3202,7 @@ window.AS_setLang=function(lang){
   if(typeof setLang === 'function') { setLang(lang); }
   if(!D[lang])return;
   _lang=lang;
-  try{localStorage.setItem('as_lang',lang);}catch(e){}
+  try{localStorage.setItem('as_lang',lang);localStorage.setItem('agrismart_lang',lang);}catch(e){}
   applyLang();
 };
 
@@ -2993,11 +3319,24 @@ const CNN_PARAMS_META = [
 
 let _cnn = {
   zones:[], analysisResults:{}, selectedZone:null,
-  currentCulture:'', isAnalyzing:false, dataSource:'offline',
+  currentCulture:'', isAnalyzing:false, _analyzeStart:0, dataSource:'offline',
   gmap:null, markers:{}, circles:{}, infoWindow:null,
   _leafletMap:null, _leafletMarkers:{}, _leafletCircles:{},
   _leafletLayers:{}, _currentLayerName:'satellite',
 };
+
+/* ════════════════════════════════════════════════════════
+   HELPER SÉCURISÉ — _safeL(key, fallback)
+   Protège contre les erreurs de syntaxe dans le dictionnaire D{}
+   → la carte s'affiche TOUJOURS même si D{} est cassé
+════════════════════════════════════════════════════════ */
+function _safeL(key, fallback) {
+  try {
+    if (typeof L !== 'function') return fallback || '';
+    const val = L()[key];
+    return val !== undefined ? val : (fallback || '');
+  } catch(e) { return fallback || ''; }
+}
 
 /* ════════════════════════════════════════════════════════
    BUILD PAGE
@@ -3107,54 +3446,54 @@ async function buildCNNPage() {
 
     <div class="cnn-topbar">
       <div class="cnn-topbar-left">
-        <h2 class="cnn-heading">🛰️ Analyse CNN — Satellite GPS</h2>
+        <h2 class="cnn-heading" id="cnn-main-heading">🛰️ Analyse CNN — Satellite GPS</h2>
         <span class="cnn-src-badge" id="cnn-src-badge">⏳ Chargement…</span>
       </div>
       <div class="cnn-topbar-right">
         <select class="cnn-select" id="cnn-culture-select" onchange="onCNNCultureChange()">
-          <option value="">-- Choisir une culture --</option>
-          <option value="tournesol">🌻 Tournesol</option>
-          <option value="ble">🌾 Blé</option>
-          <option value="mais">🌽 Maïs</option>
-          <option value="tomate">🍅 Tomate</option>
-          <option value="soja">🌱 Soja</option>
-          <option value="riz">🌾 Riz</option>
-          <option value="coton">🌿 Coton</option>
-          <option value="cafe">☕ Café</option>
-          <option value="pomme_de_terre">🥔 Pomme de terre</option>
-          <option value="mangue">🥭 Mangue</option>
-          <option value="pois_chiche">🫘 Pois chiche</option>
-          <option value="raisin">🍇 Raisin</option>
+          <option value="" id="cnn-choose-opt">${_safeL('cnnChooseCulture','-- Choisir une culture --')}</option>
+          <option value="tournesol">${_safeL('cnnCropTournesol','🌻 Tournesol')}</option>
+          <option value="ble">${_safeL('cnnCropBle','🌾 Blé')}</option>
+          <option value="mais">${_safeL('cnnCropMais','🌽 Maïs')}</option>
+          <option value="tomate">${_safeL('cnnCropTomate','🍅 Tomate')}</option>
+          <option value="soja">${_safeL('cnnCropSoja','🌱 Soja')}</option>
+          <option value="riz">${_safeL('cnnCropRiz','🌾 Riz')}</option>
+          <option value="coton">${_safeL('cnnCropCoton','🌿 Coton')}</option>
+          <option value="cafe">${_safeL('cnnCropCafe','☕ Café')}</option>
+          <option value="pomme_de_terre">${_safeL('cnnCropPomme','🥔 Pomme de terre')}</option>
+          <option value="mangue">${_safeL('cnnCropMangue','🥭 Mangue')}</option>
+          <option value="pois_chiche">${_safeL('cnnCropPois','🫘 Pois chiche')}</option>
+          <option value="raisin">${_safeL('cnnCropRaisin','🍇 Raisin')}</option>
         </select>
-        <button class="btn btn-primary" id="cnn-run-btn" onclick="runCNNAnalysis()" disabled>⚡ Analyser</button>
-        <button class="btn btn-secondary" onclick="refreshCNNData()">🔄 Données</button>
+        <button class="btn btn-primary" id="cnn-run-btn" onclick="runCNNAnalysis()" disabled>${_safeL('cnnAnalyse','⚡ Analyser')}</button>
+        <button class="btn btn-secondary" id="cnn-data-btn" onclick="refreshCNNData()">${_safeL('cnnCharger','🔄 Données')}</button>
       </div>
     </div>
 
     <div class="cnn-grid">
       <div class="card cnn-map-card">
         <div class="card-header" style="flex-wrap:wrap;gap:6px;">
-          <span class="card-title">🛰️ Vue Satellite</span>
+          <span class="card-title" id="cnn-vuesat-lbl">🛰️ Vue Satellite</span>
           <span id="cnn-map-mode-badge">🛰️ GPS réel</span>
           <span id="cnn-zoom-lbl">zoom 18</span>
         </div>
         <div id="cnn-gmap"></div>
         <div class="cnn-map-btns">
-          <button class="cnn-map-btn active" id="btn-sat"     onclick="_cnnSetMapType('satellite')">🛰️ Satellite</button>
-          <button class="cnn-map-btn"        id="btn-hybrid"  onclick="_cnnSetMapType('hybrid')">🛰️+Labels</button>
-          <button class="cnn-map-btn"        id="btn-road"    onclick="_cnnSetMapType('roadmap')">🗺️ Plan</button>
-          <button class="cnn-map-btn"        id="btn-terrain" onclick="_cnnSetMapType('terrain')">🏔️ Terrain</button>
-          <button class="cnn-map-btn"        onclick="_cnnFitMap()">🎯 Centrer</button>
-          <button class="cnn-map-btn"        onclick="_cnnToggleFullscreen()">⛶ Plein écran</button>
+          <button class="cnn-map-btn active" id="btn-sat"     onclick="_cnnSetMapType('satellite')" data-i18n="cnnBtnSat">🛰️ Satellite</button>
+          <button class="cnn-map-btn"        id="btn-hybrid"  onclick="_cnnSetMapType('hybrid')"    data-i18n="cnnBtnHybrid">🛰️+Labels</button>
+          <button class="cnn-map-btn"        id="btn-road"    onclick="_cnnSetMapType('roadmap')"   data-i18n="cnnBtnPlan">🗺️ Plan</button>
+          <button class="cnn-map-btn"        id="btn-terrain" onclick="_cnnSetMapType('terrain')"   data-i18n="cnnBtnTerrain">🏔️ Terrain</button>
+          <button class="cnn-map-btn"        id="btn-centrer" onclick="_cnnFitMap()"                data-i18n="cnnBtnCentrer">🎯 Centrer</button>
+          <button class="cnn-map-btn"        id="btn-fullscr" onclick="_cnnToggleFullscreen()"      data-i18n="cnnBtnFullscreen">⛶ Plein écran</button>
         </div>
         <div id="cnn-no-gps-msg" class="cnn-no-gps-msg" style="display:none">
           ⚠️ Coordonnées GPS simulées. Définissez lat/lon dans MySQL pour voir vos vraies parcelles.
         </div>
         <div class="cnn-legend">
-          <span class="cnn-leg"><span class="cnn-leg-dot" style="background:#16a34a"></span>Optimal ≥72%</span>
-          <span class="cnn-leg"><span class="cnn-leg-dot" style="background:#d97706"></span>Acceptable 48–71%</span>
-          <span class="cnn-leg"><span class="cnn-leg-dot" style="background:#dc2626"></span>Incompatible &lt;48%</span>
-          <span class="cnn-leg"><span class="cnn-leg-dot" style="background:#94a3b8"></span>Non analysé</span>
+          <span class="cnn-leg"><span class="cnn-leg-dot" style="background:#16a34a"></span><span data-i18n="cnnLegOptimal">Optimal ≥72%</span></span>
+          <span class="cnn-leg"><span class="cnn-leg-dot" style="background:#d97706"></span><span data-i18n="cnnLegAccept">Acceptable 48–71%</span></span>
+          <span class="cnn-leg"><span class="cnn-leg-dot" style="background:#dc2626"></span><span data-i18n="cnnLegIncompat">Incompatible &lt;48%</span></span>
+          <span class="cnn-leg"><span class="cnn-leg-dot" style="background:#94a3b8"></span><span data-i18n="cnnLegNonAna">Non analysé</span></span>
         </div>
       </div>
 
@@ -3172,7 +3511,7 @@ async function buildCNNPage() {
             <span class="card-title" id="cnn-results-title">Résultats CNN</span>
             <span class="cnn-accuracy-badge" id="cnn-accuracy-badge">🧠 TF.js — prêt</span>
           </div>
-          <div id="cnn-results-body"><div class="cnn-idle-msg">Choisissez une culture et lancez l'analyse</div></div>
+          <div id="cnn-results-body"><div class="cnn-idle-msg" data-i18n="cnnIdleMsg">Choisissez une culture et lancez l'analyse</div></div>
         </div>
         <div class="card cnn-score-card" id="cnn-score-card" style="display:none">
           <div class="cnn-score-inner" id="cnn-score-inner"></div>
@@ -3181,7 +3520,26 @@ async function buildCNNPage() {
     </div>`;
 
   await _loadLeafletDeps();
-  await refreshCNNData();
+  try {
+    await refreshCNNData();
+  } catch(e) {
+    console.error('[CNN] refreshCNNData error:', e);
+    /* Garantir l'affichage de la carte même si refreshCNNData échoue */
+    if (!_cnn._leafletMap) {
+      if (_cnn.zones.length === 0) {
+        /* Charger données fallback */
+        Object.entries(CNN_FALLBACK_DATA).forEach(([nId, data], i) => {
+          const gfb = CNN_FALLBACK_GPS[i] || CNN_FALLBACK_GPS[0];
+          _cnn.zones.push({
+            id: nId, nodeId: nId, zoneLabel: gfb?.zone || 'Zone ' + (i + 1),
+            lat: gfb?.lat || 35.6940, lon: gfb?.lon || -0.6295,
+            gpsSrc: 'simulated', statut: 'offline', batterie: 100, data,
+          });
+        });
+      }
+      _initLeafletMap();
+    }
+  }
 }
 
 /* ════════════════════════════════════════════════════════
@@ -3255,7 +3613,7 @@ async function refreshCNNData() {
     });
     _cnn.dataSource = capteurs.length > 0 ? 'mysql' : 'offline';
     if (badge) {
-      badge.textContent = `✅ MySQL — ${noeuds.length} nœud(s)${hasGPS?' · 🛰️ GPS réel':''}`;
+      badge.textContent = `✅ MySQL — ${noeuds.length} ${_safeL('cnnNoeuds','nœud(s)')}${hasGPS?' · 🛰️ '+_safeL('cnnGpsReel','GPS réel'):''}`;
       badge.className = 'cnn-src-badge';
     }
   } else {
@@ -3278,7 +3636,7 @@ async function refreshCNNData() {
   const allSimulated = _cnn.zones.every(z => z.gpsSrc === 'simulated');
   if (noGps)  noGps.style.display = allSimulated ? 'block' : 'none';
   if (mBadge) {
-    mBadge.textContent = hasGPS ? '🛰️ GPS réel' : '📐 Coordonnées Oran';
+    mBadge.textContent = hasGPS ? _safeL('cnnGpsReel','🛰️ GPS réel') : _safeL('cnnCoordOran','📐 Coordonnées Oran');
     mBadge.style.background = hasGPS ? '#f0fdf4' : '#fef3c7';
     mBadge.style.color      = hasGPS ? '#16a34a' : '#d97706';
   }
@@ -3684,42 +4042,61 @@ function onCNNCultureChange() {
    ANALYSE CNN
 ════════════════════════════════════════════════════════ */
 function runCNNAnalysis() {
-  if (_cnn.isAnalyzing) return;
+  /* Débloquer isAnalyzing si bloqué depuis plus de 10 s */
+  if (_cnn.isAnalyzing) {
+    if (Date.now() - (_cnn._analyzeStart||0) > 10000) _cnn.isAnalyzing = false;
+    else return;
+  }
   const ck = document.getElementById('cnn-culture-select')?.value;
-  if (!ck) { showNotif('⚠️ Choisissez une culture'); return; }
-  _cnn.isAnalyzing = true; _cnn.currentCulture = ck;
+  if (!ck) {
+    if (typeof showNotif === 'function') showNotif(_safeL('cnnChooseWarn','⚠️ Choisissez une culture'));
+    return;
+  }
+  _cnn.isAnalyzing = true;
+  _cnn._analyzeStart = Date.now();
+  _cnn.currentCulture = ck;
   const btn = document.getElementById('cnn-run-btn');
   const te  = document.getElementById('cnn-results-title');
   const be  = document.getElementById('cnn-results-body');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="btn-spin">⟳</span> Analyse…'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="btn-spin">⟳</span> CNN…'; }
   if (te) te.textContent = 'CNN — Convolution…';
   if (be) be.innerHTML = `<div class="cnn-idle-msg">⏳ ${_cnn.zones.length} zones en cours…</div>`;
 
   setTimeout(() => {
-    _cnn.analysisResults = {};
-    _cnn.zones.forEach(z => { _cnn.analysisResults[z.id] = _cnnScore(z.data, ck); });
-    /* Mettre à jour marqueurs avec couleurs CNN */
-    _cnn.zones.forEach(z => {
-      if (_cnn._leafletMap) _addLeafletMarker(z);
-      if (_cnn.gmap)        _addGoogleMarker(z);
-    });
-    _refreshCNNResults();
-    if (_cnn.selectedZone) selectCNNZone(_cnn.selectedZone);
-    _cnn.isAnalyzing = false;
-    if (btn) { btn.disabled = false; btn.innerHTML = '⚡ Analyser'; }
-    const cn = _cnnCultureName(ck);
-    showNotif(`🛰️ CNN — ${cn} sur ${_cnn.zones.length} zone(s)`);
-    /* Sauvegarde MySQL meilleure zone */
-    const best = Object.entries(_cnn.analysisResults).sort(([,a],[,b]) => b-a)[0];
-    if (best) {
-      const bz = _cnn.zones.find(z => z.id === best[0]);
-      if (bz) apiCall('rf_save','POST',{
-        culture:cn, emoji:'🛰️', confiance:best[1],
-        ph:bz.data.ph||null, humidite_sol:bz.data.hs||null,
-        azote:bz.data.n||null, temperature:bz.data.temp||null,
-        humidite_air:bz.data.ha||null, phosphore:bz.data.p||null,
-        potassium:bz.data.k||null, precipitations:null,
+    try {
+      _cnn.analysisResults = {};
+      _cnn.zones.forEach(z => { _cnn.analysisResults[z.id] = _cnnScore(z.data, ck); });
+      /* Mettre à jour marqueurs avec couleurs CNN */
+      _cnn.zones.forEach(z => {
+        if (_cnn._leafletMap) _addLeafletMarker(z);
+        if (_cnn.gmap)        _addGoogleMarker(z);
       });
+      _refreshCNNResults();
+      if (_cnn.selectedZone) selectCNNZone(_cnn.selectedZone);
+
+      const cn = _cnnCultureName(ck);
+      if (typeof showNotif === 'function')
+        showNotif(`🛰️ CNN — ${cn} · ${_cnn.zones.length} zone(s) analysée(s)`);
+
+      /* Sauvegarde MySQL meilleure zone */
+      const best = Object.entries(_cnn.analysisResults).sort(([,a],[,b]) => b-a)[0];
+      if (best) {
+        const bz = _cnn.zones.find(z => z.id === best[0]);
+        if (bz && typeof apiCall === 'function') apiCall('rf_save','POST',{
+          culture:cn, emoji:'🛰️', confiance:best[1],
+          ph:bz.data.ph||null, humidite_sol:bz.data.hs||null,
+          azote:bz.data.n||null, temperature:bz.data.temp||null,
+          humidite_air:bz.data.ha||null, phosphore:bz.data.p||null,
+          potassium:bz.data.k||null, precipitations:null,
+        });
+      }
+    } catch(err) {
+      console.error('[CNN] Erreur analyse:', err);
+      if (typeof showNotif === 'function') showNotif('⚠️ Erreur analyse CNN : ' + err.message);
+    } finally {
+      /* Toujours débloquer le bouton */
+      _cnn.isAnalyzing = false;
+      if (btn) { btn.disabled = false; btn.innerHTML = _safeL('cnnAnalyse','⚡ Analyser'); }
     }
   }, 900);
 }
@@ -3729,8 +4106,8 @@ function _refreshCNNResults() {
   const be = document.getElementById('cnn-results-body');
   if (!te || !be) return;
   if (!Object.keys(_cnn.analysisResults).length) {
-    te.textContent = 'Résultats CNN';
-    be.innerHTML = '<div class="cnn-idle-msg">Choisissez une culture et lancez l\'analyse</div>';
+    te.textContent = _safeL('cnnResultats','Résultats CNN');
+    be.innerHTML = `<div class="cnn-idle-msg">${_safeL('cnnIdleMsg',"Choisissez une culture et lancez l'analyse")}</div>`;
     return;
   }
   te.textContent = `CNN — ${_cnnCultureName(_cnn.currentCulture)}`;
@@ -3776,13 +4153,13 @@ function _refreshCNNScoreCard(zoneId) {
 function _cnnScore(d, ck) {
   const cp = CNN_CULTURE_PARAMS[ck];
   if (!cp) return 0;
-  const L = [
+  const _layers = [
     {w:0.40, c:[{v:d.ph,r:cp.ph,w:3},{v:d.n,r:cp.n,w:2.5},{v:d.p,r:cp.p,w:1.5},{v:d.k,r:cp.k,w:1.5}]},
     {w:0.40, c:[{v:d.temp,r:cp.temp,w:3},{v:d.hs,r:cp.hs,w:2.5},{v:d.ha,r:[30,90],w:1}]},
     {w:0.20, c:[{v:d.lux,r:[400,1200],w:1},{v:d.co2,r:[350,500],w:0.5}]},
   ];
   let g = 0;
-  L.forEach(l => {
+  _layers.forEach(l => {
     let ls=0, lw=0;
     l.c.forEach(({v,r,w}) => {
       if (v == null) return;
@@ -3799,19 +4176,59 @@ function _cnnScoreColor(s) {
   return s >= 72 ? '#16a34a' : s >= 48 ? '#d97706' : '#dc2626';
 }
 function _cnnStatusLabel(s) {
-  if (s >= 72) return ['Optimal',     '#f0fdf4', '#15803d'];
-  if (s >= 48) return ['Acceptable',  '#fef3c7', '#92400e'];
-  return              ['Incompatible','#fee2e2', '#991b1b'];
+  if (s >= 72) return [_safeL('cnnNivOptimal','Optimal'),     '#f0fdf4', '#15803d'];
+  if (s >= 48) return [_safeL('cnnNivAccept', 'Acceptable'),  '#fef3c7', '#92400e'];
+  return              [_safeL('cnnNivIncompat','Incompatible'),'#fee2e2', '#991b1b'];
 }
 function _cnnCultureName(k) {
-  return {
-    tournesol:'Tournesol', ble:'Blé', mais:'Maïs', tomate:'Tomate',
-    soja:'Soja', riz:'Riz', coton:'Coton', cafe:'Café',
-    pomme_de_terre:'Pomme de terre', mangue:'Mangue',
-    pois_chiche:'Pois chiche', raisin:'Raisin',
-  }[k] || k;
+  /* Clés dictionnaire → noms traduits selon la langue courante */
+  const keys = {
+    tournesol:'cnnCropTournesol', ble:'cnnCropBle', mais:'cnnCropMais',
+    tomate:'cnnCropTomate', soja:'cnnCropSoja', riz:'cnnCropRiz',
+    coton:'cnnCropCoton', cafe:'cnnCropCafe', pomme_de_terre:'cnnCropPomme',
+    mangue:'cnnCropMangue', pois_chiche:'cnnCropPois', raisin:'cnnCropRaisin',
+  };
+  const fallbacks = {
+    tournesol:'🌻 Tournesol', ble:'🌾 Blé', mais:'🌽 Maïs', tomate:'🍅 Tomate',
+    soja:'🌱 Soja', riz:'🌾 Riz', coton:'🌿 Coton', cafe:'☕ Café',
+    pomme_de_terre:'🥔 Pomme de terre', mangue:'🥭 Mangue',
+    pois_chiche:'🫘 Pois chiche', raisin:'🍇 Raisin',
+  };
+  if (keys[k]) return _safeL(keys[k], fallbacks[k] || k);
+  return fallbacks[k] || k;
 }
 
+/* ════════════════════════════════════════════════════════
+   HOOK navigateTo → déclenche buildCNNPage à chaque visite
+   + invalidateSize si la carte est déjà initialisée
+════════════════════════════════════════════════════════ */
+(function() {
+  const _navBeforeCNN = window.navigateTo;
+  window.navigateTo = function(id) {
+    if (typeof _navBeforeCNN === 'function') _navBeforeCNN(id);
+    if (id === 'cnn') {
+      setTimeout(async () => {
+        /* Si page déjà construite, juste redimensionner la carte */
+        if (document.getElementById('cnn-gmap') && _cnn._leafletMap) {
+          _cnn._leafletMap.invalidateSize();
+        } else {
+          /* Première visite ou page détruite → reconstruire */
+          await buildCNNPage();
+        }
+      }, 180);
+    }
+  };
+})();
+
+/* Init si on arrive directement sur la page CNN */
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const pg = document.getElementById('page-cnn');
+    if (pg && pg.classList.contains('active')) buildCNNPage();
+  }, 600);
+});
+
+console.log('[AgriSmart] ✅ CNN v2 — carte protégée, traductions trilingues actives');
 </script>
 
 
@@ -4158,28 +4575,28 @@ window.updateLiveSensors = async function() {
           val: temp!=null ? temp.toFixed(1)+'°C' : '—',
           status:'ok', lbl: temp!=null?_t('stNormal'):'—' },
         { emoji:'💧', name:_t('sHumSol'),
-          val: hs!=null ? hs+'%' : '— absent',
+          val: hs!=null ? hs+'%' : '— '+(typeof T==='function'?T('lstmAbsent'):'absent'),
           status: hs!=null?(hs<20?'crit':hs<35?'warn':'ok'):'ok',
           lbl: hs!=null?(hs<20?_t('stCritique'):hs<35?_t('stSurveiller'):_t('stBon')):'Non branché' },
         { emoji:'🧪', name:_t('sPh'),
-          val: ph!=null ? ph.toFixed(1) : '— absent',
+          val: ph!=null ? ph.toFixed(1) : '— '+(typeof T==='function'?T('lstmAbsent'):'absent'),
           status: ph!=null?(ph<5.5?'warn':'ok'):'ok',
           lbl: ph!=null?(ph<5.5?_t('stAcide'):_t('stNeutre')):'Non branché' },
         { emoji:'🌿', name:_t('sAzote'),
-          val: az!=null ? az+' kg' : '— absent',
+          val: az!=null ? az+' kg' : '— '+(typeof T==='function'?T('lstmAbsent'):'absent'),
           status:'ok', lbl: az!=null?_t('stSuffisant'):'Non branché' },
         { emoji:'⚗️', name:_t('sPhosphore'),
-          val: po!=null ? po+' kg' : '— absent',
+          val: po!=null ? po+' kg' : '— '+(typeof T==='function'?T('lstmAbsent'):'absent'),
           status: po!=null?(po<25?'crit':'ok'):'ok',
           lbl: po!=null?(po<25?_t('stCritique'):_t('stOk')):'Non branché' },
         { emoji:'🌧️', name:_t('sHumAir'),
           val: ha!=null ? ha+'%' : '—',
           status:'ok', lbl: ha!=null?_t('stNormal'):'—' },
         { emoji:'☀️', name:_t('sLum'),
-          val: lux!=null ? lux+' lx' : '— absent',
+          val: lux!=null ? lux+' lx' : '— '+(typeof T==='function'?T('lstmAbsent'):'absent'),
           status:'ok', lbl: lux!=null?_t('stBon'):'Non branché' },
         { emoji:'🔬', name:_t('sCo2'),
-          val: co2!=null ? co2+' ppm' : '— absent',
+          val: co2!=null ? co2+' ppm' : '— '+(typeof T==='function'?T('lstmAbsent'):'absent'),
           status:'ok', lbl: co2!=null?_t('stNormal'):'Non branché' },
       ];
 
@@ -4236,6 +4653,40 @@ window.refreshSensors = async function() {
   setInterval(()=> window.updateLiveSensors(), 15000);
 
   console.log('[AgriSmart] ✅ iot_data.php actif — données réelles ESP32');
+
+/* ── SYNC LANGUE — résout le conflit entre HTML _lang et 11_settings _lang ── */
+(function() {
+  const origSetLang = window.setLang;
+  const origAS_setLang = window.AS_setLang;
+  
+  function _syncLang(lang) {
+    if (!lang) return;
+    // Mettre à jour TOUTES les variables _lang possibles dans la page
+    try {
+      localStorage.setItem('as_lang', lang);
+      localStorage.setItem('agrismart_lang', lang);
+    } catch(e) {}
+    // Appeler la fonction HTML applyLang si elle existe
+    if (typeof applyLang === 'function') {
+      // Mettre à jour _lang du HTML
+      try { eval('_lang = "' + lang + '"'); } catch(e) {}
+      applyLang();
+    }
+  }
+
+  // Override setLang pour synchroniser les deux systèmes
+  window.setLang = function(lang) {
+    _syncLang(lang);
+    if (typeof origSetLang === 'function') origSetLang(lang);
+  };
+  
+  window.AS_setLang = function(lang) {
+    _syncLang(lang);
+    if (typeof origAS_setLang === 'function') origAS_setLang(lang);
+  };
+
+  console.log('[AgriSmart] ✅ Langue synchronisée');
+})();
 })();
 </script>
 
@@ -4383,6 +4834,144 @@ if (typeof _origNav === 'function') {
 console.log('[AgriSmart] ✅ RF Zone override actif');
 </script>
 
+<script>
+/* ══════════════════════════════════════════════════════
+   BUILD IoT PAGE — remplace 07_iot_history.js
+   Remplit esp-table + node-list avec données réelles
+══════════════════════════════════════════════════════ */
+window.buildIoTPage = async function() {
+  const table  = document.getElementById('esp-table');
+  const lbl    = document.getElementById('iot-last-update');
+  const nodeList = document.getElementById('node-list');
+  const btn    = document.getElementById('btn-refresh-iot');
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  if (lbl) lbl.textContent = '⏳ Chargement…';
+
+  const _tl = (k, fb) => (typeof T === 'function' ? T(k) : null) || fb;
+
+  /* ── Colonnes table ── */
+  const cols = [
+    _tl('iotNoeud','Nœud'), _tl('iotZone','Zone'),
+    _tl('iotRSSI','RSSI'),  _tl('iotSF','SF / Type'),
+    _tl('iotBatterie','Batterie'), _tl('iotStatut','Statut'),
+    _tl('iotAction','Action')
+  ];
+
+  try {
+    const [rn, rc] = await Promise.all([
+      fetchIoT('noeuds'),
+      fetchIoT('capteurs')
+    ]);
+
+    const noeuds   = rn.success && rn.noeuds   ? rn.noeuds   : [];
+    const capteurs = rc.success && rc.capteurs  ? rc.capteurs : [];
+
+    /* Index capteur par node_id */
+    const capIdx = {};
+    capteurs.forEach(c => { capIdx[c.node_id] = c; });
+
+    const now = new Date().toLocaleTimeString('fr-FR');
+    const total = noeuds.length;
+    const online = noeuds.filter(n => n.statut === 'online' || n.statut === 'actif').length;
+
+    if (lbl) lbl.textContent = `✅ en ligne ${online}/${total} · ${now}`;
+
+    /* ── Table ESP32 ── */
+    if (table) {
+      if (!noeuds.length) {
+        table.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--slate);">
+          <div style="font-size:28px;margin-bottom:8px">📡</div>
+          <div style="font-weight:600">${_tl('lstmNonConn','⚠️ ESP32 non connecté')}</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:6px">Vérifiez XAMPP + ESP32 branché</div>
+        </td></tr>`;
+      } else {
+        const thead = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>`;
+        const rows  = noeuds.map(n => {
+          const cap   = capIdx[n.node_id] || {};
+          const rssi  = n.rssi  != null ? n.rssi + ' dBm'  : (cap.rssi  != null ? cap.rssi + ' dBm' : '—');
+          const sf    = n.sf    || n.protocole || (cap.protocole) || 'WiFi';
+          const batt  = n.batterie != null ? n.batterie + '%' : '—';
+          const isOnline = (n.statut === 'online' || n.statut === 'actif');
+          const statBadge = isOnline
+            ? `<span style="color:#16a34a;font-weight:700">✅ ${_tl('iotEnLigne','En ligne')}</span>`
+            : `<span style="color:#dc2626;font-weight:600">✗ ${_tl('iotHorsLigne','Hors ligne (vérifiez ESP32)')}</span>`;
+          const zone = n.zone || n.zone_label || n.node_id;
+          const battBar = n.batterie != null
+            ? `<div style="display:flex;align-items:center;gap:6px">
+                <div style="width:40px;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+                  <div style="width:${n.batterie}%;height:100%;background:${n.batterie>50?'#16a34a':n.batterie>20?'#d97706':'#dc2626'};transition:.4s"></div>
+                </div>
+                <span>${batt}</span>
+               </div>`
+            : '—';
+          return `<tr>
+            <td><code style="font-size:11px">${n.node_id}</code></td>
+            <td>${zone}</td>
+            <td><span style="font-family:monospace">${rssi}</span></td>
+            <td><span style="background:#e0f2fe;color:#0284c7;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${sf}</span></td>
+            <td>${battBar}</td>
+            <td>${statBadge}</td>
+            <td style="white-space:nowrap">
+              <button onclick="buildIoTPage()" title="Actualiser"
+                style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;font-size:13px;">🔄</button>
+              <button onclick="window._iotMesure && window._iotMesure('${n.node_id}')" title="${_tl('iotMesure','Mesure')}"
+                style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;font-size:12px;">💾 ${_tl('iotMesure','Mesure')}</button>
+            </td>
+          </tr>`;
+        }).join('');
+        table.innerHTML = thead + `<tbody>${rows}</tbody>`;
+      }
+    }
+
+    /* ── Node list (mini cards sous la carte) ── */
+    if (nodeList) {
+      nodeList.innerHTML = noeuds.map(n => {
+        const isOnline = n.statut === 'online' || n.statut === 'actif';
+        const batt = n.batterie != null ? n.batterie + '%' : '—';
+        const rssi = n.rssi != null ? n.rssi + ' dBm' : '—';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;
+          border-bottom:1px solid var(--border);font-size:12px;">
+          <span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;
+            background:${isOnline?'#16a34a':'#dc2626'};
+            box-shadow:0 0 6px ${isOnline?'rgba(22,163,74,.5)':'rgba(220,38,38,.4)'}"></span>
+          <span style="font-weight:600;font-family:monospace;color:var(--text)">${n.node_id}</span>
+          <span style="color:var(--slate);flex:1">${n.zone||n.zone_label||'—'}</span>
+          <span style="color:var(--slate)">${rssi}</span>
+          <span style="color:var(--slate)">🔋 ${batt}</span>
+        </div>`;
+      }).join('') || `<div style="text-align:center;padding:12px;color:var(--slate);font-size:12px;">
+        📡 Aucun nœud détecté</div>`;
+    }
+
+  } catch(err) {
+    console.error('[IoT] buildIoTPage error:', err);
+    if (table) table.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#dc2626">
+      ⚠️ Erreur : ${err.message}</td></tr>`;
+    if (lbl) lbl.textContent = '⚠️ Erreur';
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '🔄 Actualiser'; }
+  }
+};
+
+/* ── Hook navigateTo → déclenche buildIoTPage à chaque visite ── */
+(function() {
+  const _navBeforeIoT = window.navigateTo;
+  window.navigateTo = function(id) {
+    if (typeof _navBeforeIoT === 'function') _navBeforeIoT(id);
+    if (id === 'iot') setTimeout(() => window.buildIoTPage(), 200);
+  };
+})();
+
+/* ── Init si déjà sur la page IoT au chargement ── */
+window.addEventListener('load', () => setTimeout(() => {
+  if (document.getElementById('page-iot')?.classList.contains('active'))
+    window.buildIoTPage();
+}, 800));
+
+console.log('[AgriSmart] ✅ buildIoTPage inline actif');
+</script>
+
 
 
 
@@ -4394,13 +4983,28 @@ console.log('[AgriSmart] ✅ RF Zone override actif');
 /* LSTM FINAL — remplace drawLSTMChart + drawTempChart directement */
 
 function _realDays7() {
-  const J=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-  const M=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-  const now=new Date();
-  return Array.from({length:7},(_,i)=>{
-    const d=new Date(now); d.setDate(now.getDate()+i-3);
-    return {short:J[d.getDay()], full:J[d.getDay()]+' '+d.getDate()+' '+M[d.getMonth()],
-            isToday:i===3, isFuture:i>3};
+  /* Jours et mois selon la langue — avec fallback total si D non dispo */
+  let J, M;
+  try {
+    const lang = (typeof _lang !== 'undefined' ? _lang : null)
+              || (typeof localStorage !== 'undefined' ? localStorage.getItem('as_lang') : null)
+              || 'fr';
+    const dl = (typeof D !== 'undefined' && D[lang]) ? D[lang] : (typeof D !== 'undefined' ? D.fr : null);
+    J = dl?.daysShort || null;
+    M = dl?.months    || null;
+  } catch(e) {}
+  if (!J) J = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  if (!M) M = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const now = new Date();
+  return Array.from({length:7}, (_, i) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i - 3);
+    return {
+      short:    J[d.getDay()],
+      full:     J[d.getDay()] + ' ' + d.getDate() + ' ' + M[d.getMonth()],
+      isToday:  i === 3,
+      isFuture: i > 3
+    };
   });
 }
 
@@ -4424,27 +5028,28 @@ let _espTemp = null, _espHum = null;
 })();
 
 function _drawRealChart(svgId, big, type) {
+  try {
   const svg = document.getElementById(svgId);
   if (!svg) return;
   const W = big ? 500 : 400, H = big ? 160 : 130;
   const days = _realDays7();
   const today = days[3];
 
-  /* Générer données basées sur ESP32 réel */
-  const T  = _espTemp || 26;
-  const HS = _espHum  || 40;
+  /* Valeurs ESP32 — renommées _tv/_hv pour ne pas masquer T() global */
+  const _tv = _espTemp || 26;
+  const _hv = _espHum  || 40;
 
   let past, future, color, unit, thresh, yMin, yMax;
   if (type === 'hum') {
-    past   = [HS+9,HS+7,HS+5,HS+3,HS+2,HS+1,HS].map(v=>Math.max(5,Math.min(95,Math.round(v))));
-    future = [HS-1,HS-3,HS-5,HS-4,HS-3,HS-4,HS-5].map(v=>Math.max(5,Math.min(95,Math.round(v))));
+    past   = [_hv+9,_hv+7,_hv+5,_hv+3,_hv+2,_hv+1,_hv].map(v=>Math.max(5,Math.min(95,Math.round(v))));
+    future = [_hv-1,_hv-3,_hv-5,_hv-4,_hv-3,_hv-4,_hv-5].map(v=>Math.max(5,Math.min(95,Math.round(v))));
     color='#7c3aed'; unit='%'; thresh=35;
     yMin=Math.max(0,Math.min(...past,...future)-5);
     yMax=Math.min(100,Math.max(...past,...future)+8);
   } else {
     const n=[-1.5,-.8,-1.2,+.5,+1,+.3,0];
-    past   = n.map((x,i)=>Math.round((T+x+(i-3)*.08)*10)/10);
-    future = [-.3,-.7,-1.2,-.6,+.1,+.4,+.2].map(x=>Math.round((T+x)*10)/10);
+    past   = n.map((x,i)=>Math.round((_tv+x+(i-3)*.08)*10)/10);
+    future = [-.3,-.7,-1.2,-.6,+.1,+.4,+.2].map(x=>Math.round((_tv+x)*10)/10);
     color='#d97706'; unit='°C'; thresh=null;
     yMin=Math.min(...past,...future)-2; yMax=Math.max(...past,...future)+3;
   }
@@ -4526,30 +5131,83 @@ function _drawRealChart(svgId, big, type) {
       }
     });
   }, 50);
+  } catch(err) { console.error('[LSTM chart] Erreur:', err); }
 }
 
-/* Bannière zone */
+/* Bannière zone — robuste avec fallback + mutex anti-duplication */
+let _lstmBannerRunning = false;
 async function _lstmBanner() {
-  const pg = document.getElementById('page-lstm');
-  if (!pg) return;
-  const old = document.getElementById('lstm-zone-banner');
-  if (old) old.remove();
-  const zones = await getAllZonesData();
+  /* Verrou : si déjà en cours, ignorer l'appel concurrent */
+  if (_lstmBannerRunning) return;
+  _lstmBannerRunning = true;
+
+  try {
+    const pg = document.getElementById('page-lstm');
+    if (!pg) return;
+
+    /* Supprimer TOUTES les bannières existantes avant de créer la nouvelle */
+    document.querySelectorAll('#lstm-zone-banner').forEach(el => el.remove());
+
+    let zones = [];
+    try {
+      const zonesPromise = (typeof getAllZonesData === 'function')
+        ? getAllZonesData()
+        : Promise.resolve([]);
+      const timeout = new Promise(resolve => setTimeout(() => resolve([]), 4000));
+      zones = await Promise.race([zonesPromise, timeout]);
+    } catch(e) { zones = []; }
+
+    /* Vérifier une seconde fois après l'await (autre appel peut avoir réussi) */
+    document.querySelectorAll('#lstm-zone-banner').forEach(el => el.remove());
+
   const banner = document.createElement('div');
   banner.id = 'lstm-zone-banner';
-  const today = _realDays7()[3];
+  let today;
+  try { today = _realDays7()[3]; }
+  catch(e) { today = { short:'Auj', full: new Date().toLocaleDateString('fr-FR') }; }
+
   const z = zones?.[0];
-  const opts = (zones||[]).map(z2=>`<option value="${z2.node_id}">${z2.zone} (${z2.node_id})</option>`).join('');
-  const mk=(ico,lbl,val,real,hint)=>`
+  const _tl = (k, fb) => (typeof T === 'function' ? T(k) : null) || fb;
+
+  const opts = (zones||[]).map(z2 =>
+    `<option value="${z2.node_id}">${z2.zone} (${z2.node_id})</option>`
+  ).join('');
+
+  const mk = (ico, lbl, val, real, hint) => `
     <div style="background:${real?'rgba(22,163,74,.1)':'rgba(100,116,139,.08)'};
       border:1.5px solid ${real?'#16a34a':'#475569'};border-radius:10px;padding:10px;text-align:center;">
       <div style="font-size:20px;margin-bottom:3px">${ico}</div>
       <div style="font-size:17px;font-weight:800;color:${real?'#16a34a':'#64748b'};margin-bottom:2px">${val}</div>
       <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${lbl}</div>
       <div style="font-size:9px;padding:1px 6px;border-radius:5px;display:inline-block;
-        background:${real?'#16a34a':'#64748b'};color:#fff">${real?'📡 ESP32':'absent'}</div>
+        background:${real?'#16a34a':'#64748b'};color:#fff">${real?'📡 ESP32':_tl('lstmAbsent','Non branché')}</div>
       <div style="font-size:10px;color:#64748b;margin-top:3px">${hint}</div>
     </div>`;
+
+  const zoneCards = z ? `
+    <div id="lstm-zone-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      ${mk('🌡️', _tl('tempLabel','Température'),
+        z.temp!=null ? z.temp.toFixed(1)+'°C' : '—', z.temp!=null,
+        z.temp!=null ? _tl('lstmBasePrev','Base prévision') : _tl('lstmDHT11','→ DHT11'))}
+      ${mk('💧', _tl('sHumSol','Humidité Sol'),
+        z.hs!=null ? z.hs+'%' : '—', z.hs!=null,
+        z.hs!=null ? _tl('lstmSeuilCrit','Seuil: 35%') : _tl('lstmCapteurSol','→ capteur sol'))}
+      ${mk('🌧️', _tl('sHumAir','Humidité Air'),
+        z.ha!=null ? z.ha+'%' : '—', z.ha!=null,
+        z.ha!=null ? _tl('lstmEstimPluie','Estimation pluie') : _tl('lstmDHT11','→ DHT11'))}
+      ${mk('🧪', _tl('sPh','pH Sol'),
+        z.ph!=null ? z.ph.toFixed(1) : '—', z.ph!=null,
+        z.ph!=null ? 'Opt: 6–7' : _tl('lstmSondePH','→ sonde pH'))}
+    </div>` : `
+    <div style="text-align:center;color:#fbbf24;padding:8px;display:flex;align-items:center;justify-content:center;gap:10px;">
+      <span>${_tl('lstmNonConn','⚠️ ESP32 non connecté')}</span>
+      <button onclick="_lstmBanner()"
+        style="padding:4px 12px;background:#7c3aed;color:#fff;border:none;
+          border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">
+        🔄 ${_tl('lstmChargerZone','Réessayer')}
+      </button>
+    </div>`;
+
   banner.innerHTML = `
     <div style="background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(91,33,182,.04));
       border:1.5px solid rgba(124,58,237,.4);border-radius:14px;padding:14px;margin-bottom:14px;">
@@ -4561,32 +5219,42 @@ async function _lstmBanner() {
               background:var(--card,#1e293b);color:var(--text);font-size:13px;cursor:pointer">${opts}</select>
           <button onclick="window.loadLSTMZone()"
             style="padding:6px 14px;background:#7c3aed;color:#fff;border:none;
-              border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">🔄 Charger</button>
+              border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">
+            🔄 <span class='t-charger'>${_tl('lstmChargerZone','Charger')}</span>
+          </button>
         </div>` : ''}
       </div>
       <div style="font-size:11px;color:#94a3b8;background:rgba(0,0,0,.15);border-radius:8px;
         padding:8px 12px;margin-bottom:10px;line-height:1.8">
-        💡 Gris = 7 jours passés · Violet/Orange = 7 jours prévus · 
-        Jaune pointillé = seuil critique 35% (irriguer) · <strong style="color:#22c55e">📍 = ${today.full}</strong>
+        💡 ${_tl('lstmLegGris','Gris = 7 jours passés')} ·
+        ${_tl('lstmLegViolet','Violet/Orange = 7 jours prévus')} ·
+        ${_tl('lstmLegJaune','Jaune pointillé = seuil critique 35% (irriguer)')} ·
+        <strong style="color:#22c55e">${_tl('lstmLegAuj','📍 = Aujourd\'hui')} — ${today.full}</strong>
       </div>
-      ${z ? `<div id="lstm-zone-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-        ${mk('🌡️','Température',z.temp!=null?z.temp.toFixed(1)+'°C':'—',z.temp!=null,z.temp!=null?'Base prévision':'→ DHT11')}
-        ${mk('💧','Humidité Sol',z.hs!=null?z.hs+'%':'—',z.hs!=null,z.hs!=null?'Seuil: 35%':'→ capteur sol')}
-        ${mk('🌧️','Humidité Air',z.ha!=null?z.ha+'%':'—',z.ha!=null,z.ha!=null?'Estimation pluie':'→ DHT11')}
-        ${mk('🧪','pH Sol',z.ph!=null?z.ph.toFixed(1):'—',z.ph!=null,z.ph!=null?'Opt: 6–7':'→ sonde pH')}
-      </div>` : '<div style="text-align:center;color:#fbbf24;padding:8px">⚠️ ESP32 non connecté</div>'}
+      ${zoneCards}
     </div>`;
-  const sim=document.getElementById('lstm-simulator');
-  const first=pg.querySelector('.stats-grid,.g2,.card');
-  if(sim) sim.parentNode.insertBefore(banner,sim);
-  else if(first) first.parentNode.insertBefore(banner,first);
-  else pg.prepend(banner);
+
+  const sim   = document.getElementById('lstm-simulator');
+  const first = pg.querySelector('.stats-grid,.g2,.card');
+  if (sim)        sim.parentNode.insertBefore(banner, sim);
+  else if (first) first.parentNode.insertBefore(banner, first);
+  else            pg.prepend(banner);
+
+  } finally {
+    /* Libérer le verrou — délai court pour absorber les appels en rafale */
+    setTimeout(() => { _lstmBannerRunning = false; }, 500);
+  }
 }
 
 window.loadLSTMZone = async function() {
-  window.drawLSTMChart('lstm-big', true);
-  window.drawTempChart();
-  if(typeof showNotif==='function') showNotif('📡 LSTM mis à jour');
+  try {
+    window.drawLSTMChart('lstm-big', true);
+    window.drawTempChart();
+    await _lstmBanner();
+    if (typeof showNotif === 'function') showNotif('📡 LSTM mis à jour');
+  } catch(e) {
+    console.error('[LSTM] loadLSTMZone error:', e);
+  }
 };
 
 /* Hook navigateTo — sans condition _hooked pour éviter conflit */
@@ -4599,115 +5267,341 @@ window.navigateTo = function(id) {
   }
 };
 
-/* Init immédiat si déjà sur la page */
-window.addEventListener('load', ()=>setTimeout(()=>{
-  if(document.getElementById('page-lstm')?.classList.contains('active')){
-    window.drawLSTMChart('lstm-big',true); window.drawTempChart(); _lstmBanner();
+/* Init immédiat si déjà sur la page LSTM au 1er chargement */
+window.addEventListener('load', () => setTimeout(() => {
+  const pg = document.getElementById('page-lstm');
+  if (pg && pg.classList.contains('active') && !document.getElementById('lstm-zone-banner')) {
+    window.drawLSTMChart('lstm-big', true);
+    window.drawTempChart();
+    _lstmBanner();
   }
-},500));
+}, 600));
 
 console.log('[AgriSmart] ✅ LSTM FINAL actif');
 </script>
+
 <script>
-/* ══════════════════════════════════════════════════════
-   OVERRIDE IMAGE ANALYSIS — Injecté directement HTML
-   Remplace _callClaudeWithFile par appel réel Claude Vision
-   Fonctionne indépendamment du cache de 10_chat_mysql.js
-══════════════════════════════════════════════════════ */
-/* Override immédiat + au chargement */
-(function applyVisionOverride() {
+/* ════════════════════════════════════════════════════════════════
+   AGRISMART CHATBOT — Groq (LLaMA 4 Scout) PRIMARY
+   1. Groq + LLaMA 4 Scout Vision — texte ET images
+   2. Groq + LLaMA 3 8B           — fallback texte
+   3. Gemini 1.5 Flash            — fallback si clé configurée
+   4. Base locale agricole        — toujours disponible
+   ✅ Clé Groq gratuite sur console.groq.com
+   ✅ Images analysées via LLaMA 4 Scout (vision)
+════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
 
-    /* ── Surcharge complète de la fonction ── */
-    window._callClaudeWithFile = async function(userText, file) {
-      const lang = typeof _detectLang === 'function' ? _detectLang(userText || '') : 'fr';
+let _lang='fr', _hist=[], _busy=false, _file=null, _gk='', _qk='';
+try{
+  _lang=localStorage.getItem('as_lang')||'fr';
+  _gk =localStorage.getItem('agri_gemini_key')||'';
+  _qk =localStorage.getItem('agri_groq_key')||'';
+}catch(e){}
 
-      if (!file.type.startsWith('image/')) {
-        return typeof _analyserFichierLocal === 'function'
-          ? _analyserFichierLocal(file, userText, lang) : '❌ Fichier non supporté';
+/* ════════════════ UI ════════════════ */
+function _msg(role,txt){
+  const box=document.getElementById('chat-messages'); if(!box)return;
+  const bot=role!=='user';
+  const html=String(txt)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code style="background:rgba(0,0,0,.1);padding:1px 5px;border-radius:4px;font-size:11px">$1</code>')
+    .replace(/\n/g,'<br>');
+  const el=document.createElement('div');
+  el.style.cssText=`display:flex;gap:8px;margin-bottom:10px;align-items:flex-start;${bot?'':'flex-direction:row-reverse'}`;
+  el.innerHTML=bot
+    ?`<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6d28d9,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🦙</div>
+      <div style="max-width:80%;padding:10px 14px;font-size:13px;line-height:1.6;border-radius:4px 14px 14px 14px;background:var(--white,#fff);color:var(--text,#0f172a);border:1px solid var(--border,#e2e8f0);box-shadow:0 1px 4px rgba(0,0,0,.07)">${html}</div>`
+    :`<div style="max-width:80%;padding:10px 14px;font-size:13px;line-height:1.6;border-radius:14px 4px 14px 14px;background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;box-shadow:0 1px 6px rgba(109,40,217,.35)">${html}</div>`;
+  box.appendChild(el); box.scrollTop=box.scrollHeight;
+}
+
+function _typing(show){
+  document.getElementById('_ct')?.remove(); if(!show)return;
+  const box=document.getElementById('chat-messages'); if(!box)return;
+  const el=document.createElement('div'); el.id='_ct';
+  el.style.cssText='display:flex;gap:8px;align-items:flex-start;margin-bottom:10px';
+  el.innerHTML=`<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6d28d9,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🦙</div>
+    <div class="chat-typing" style="background:var(--white,#fff);border:1px solid var(--border,#e2e8f0);border-radius:4px 14px 14px 14px;padding:12px 16px"><span></span><span></span><span></span></div>`;
+  box.appendChild(el); box.scrollTop=box.scrollHeight;
+}
+
+function _prevFile(f){
+  document.getElementById('_cp')?.remove(); if(!f)return;
+  const inp=document.getElementById('chat-input'); if(!inp)return;
+  const d=document.createElement('div'); d.id='_cp';
+  d.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 10px;margin:4px 0;background:rgba(109,40,217,.08);border:1px solid rgba(109,40,217,.3);border-radius:8px;font-size:12px';
+  d.innerHTML=`<span>${f.type.startsWith('image/')?'🖼️':'📄'} <strong>${f.name}</strong> (${(f.size/1024).toFixed(0)} Ko)</span>
+    <button onclick="window._rmFile()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#dc2626;font-size:15px;line-height:1">✕</button>`;
+  inp.parentElement.insertBefore(d,inp);
+}
+window._rmFile=function(){
+  _file=null; document.getElementById('_cp')?.remove();
+  const fi=document.getElementById('chat-file-input'); if(fi)fi.value='';
+};
+
+/* ════════════════ FICHIER 📎 ════════════════ */
+window.ouvrirAttachement=function(){ document.getElementById('chat-file-input')?.click(); };
+window.onFileSelected=function(inp){
+  const f=inp?.files?.[0]; if(!f)return;
+  _file=f; _prevFile(f);
+  setTimeout(()=>document.getElementById('chat-input')?.focus(),80);
+};
+
+/* ════════════════ BASE64 ════════════════ */
+function _b64(f){
+  return new Promise((res,rej)=>{
+    const rd=new FileReader();
+    rd.onload=()=>res(rd.result.split(',')[1]);
+    rd.onerror=()=>rej(new Error('Lecture impossible'));
+    rd.readAsDataURL(f);
+  });
+}
+
+/* ════════════════ PROMPT SYSTÈME ════════════════ */
+function _sys(){
+  const l={fr:'français',ar:'arabe',en:'anglais'}[_lang]||'français';
+  return `Tu es AgriBot, assistant IA expert de la plateforme AgriSmart pour l'agriculture de précision à Oran, Algérie.
+Modules: Random Forest (100 arbres, 98% précision) recommande cultures. LSTM (92%) prédit humidité sol 7 jours.
+Capteurs ESP32: pH, humidité sol/air, température, azote(N), phosphore(P), potassium(K), CO₂, luminosité.
+Cultures: Blé, Tournesol, Maïs, Tomate, Soja, Riz, Coton, Café, Pomme de terre, Mangue, Pois chiche, Raisin.
+Seuil critique: humidité sol < 35% → irriguer. pH < 5.5 → chaux. pH > 7.5 → soufre.
+Réponds TOUJOURS en ${l}. Utilise emojis agricoles. Sois concis et pratique.`;
+}
+
+/* ════════════════ GROQ — LLAMA 4 SCOUT (Vision + Texte) ════════════════ */
+async function _groqVision(text, file){
+  if(!_qk) throw new Error('no_groq_key');
+  let userContent;
+  if(file?.type.startsWith('image/')){
+    const b=await _b64(file);
+    const url=`data:${file.type};base64,${b}`;
+    userContent=[
+      {type:'image_url', image_url:{url}},
+      {type:'text', text: text||'Analyse cette image agricole et donne des recommandations pratiques.'}
+    ];
+  } else {
+    userContent=text;
+  }
+  const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+_qk},
+    body:JSON.stringify({
+      model: file?.type.startsWith('image/')
+        ? 'meta-llama/llama-4-scout-17b-16e-instruct'  // Vision
+        : 'llama3-8b-8192',                             // Texte rapide
+      messages:[
+        {role:'system', content:_sys()},
+        ..._hist.slice(-8),
+        {role:'user', content:userContent}
+      ],
+      max_tokens:800, temperature:0.7
+    })
+  });
+  if(!r.ok){
+    const err=await r.text();
+    throw new Error('Groq '+r.status+': '+JSON.parse(err||'{}')?.error?.message||err.substring(0,80));
+  }
+  const d=await r.json();
+  const rep=d.choices?.[0]?.message?.content;
+  if(!rep) throw new Error('Groq réponse vide');
+  return rep;
+}
+
+/* ════════════════ GROQ — LLAMA 3 (Texte fallback) ════════════════ */
+async function _groqText(text){
+  if(!_qk) throw new Error('no_groq_key');
+  const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+_qk},
+    body:JSON.stringify({
+      model:'llama3-70b-8192',
+      messages:[{role:'system',content:_sys()},..._hist.slice(-8),{role:'user',content:text}],
+      max_tokens:700, temperature:0.7
+    })
+  });
+  if(!r.ok) throw new Error('Groq70B '+r.status);
+  const d=await r.json();
+  const rep=d.choices?.[0]?.message?.content;
+  if(!rep) throw new Error('Groq70B vide'); return rep;
+}
+
+/* ════════════════ GEMINI (fallback si clé configurée) ════════════════ */
+async function _gemini(text){
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${_gk}`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      contents:[
+        {role:'user',parts:[{text:_sys()}]},
+        {role:'model',parts:[{text:'Compris. Je suis AgriBot.'}]},
+        ..._hist.slice(-6).map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),
+        {role:'user',parts:[{text}]}
+      ],
+      generationConfig:{maxOutputTokens:700,temperature:0.7}
+    })
+  });
+  if(!r.ok) throw new Error('Gemini '+r.status);
+  const d=await r.json();
+  const rep=d.candidates?.[0]?.content?.parts?.[0]?.text;
+  if(!rep) throw new Error('Gemini vide'); return rep;
+}
+
+/* ════════════════ BASE LOCALE ════════════════ */
+function _local(text){
+  const t=text.toLowerCase();
+  const k=/bonjour|salut|hello|مرحبا/i.test(t)?'s'
+          :/irrig|arros|ري|humidite|35/i.test(t)?'i'
+          :/lstm|prevision|تنبؤ/i.test(t)?'l'
+          :/rf|random|culture|محصول/i.test(t)?'r'
+          :/\bph\b|acid|حموضة/i.test(t)?'p':'d';
+  const kb={
+    fr:{
+      s:'🦙 Bonjour ! Je suis **AgriBot** (LLaMA · Groq). Posez vos questions sur irrigation, cultures, pH, LSTM.',
+      i:'💧 Irriguer quand humidité sol < **35%**. Le LSTM prédit les besoins 7 jours à l\'avance.',
+      l:'📈 **LSTM** prédit humidité sol sur 7 jours. Seuil critique : **35%** → irriguer immédiatement.',
+      r:'🌲 **Random Forest** (100 arbres) : pH, humidité, N, P, K, T° → meilleure culture (98% précision).',
+      p:'⚗️ pH optimal : Blé 5.5–7.5 | Tomate 6–7 | Maïs 5.5–7 | Riz 5–7',
+      d:'💡 Je peux aider : irrigation, cultures, pH, LSTM, Random Forest, ESP32.\n\n🔑 *Ajoutez votre clé Groq (🔑) pour des réponses IA avancées — gratuit sur console.groq.com*'
+    },
+    ar:{
+      s:'🦙 مرحباً! أنا **AgriBot** (LLaMA · Groq). اسألني عن الري والمحاصيل وpH وLSTM.',
+      i:'💧 اسقِ عندما رطوبة التربة < **35%**. LSTM يتنبأ بالاحتياجات لـ7 أيام.',
+      d:'🔑 أضف مفتاح Groq لتفعيل الذكاء الاصطناعي. مجاني على console.groq.com'
+    },
+    en:{
+      s:'🦙 Hello! I\'m **AgriBot** (LLaMA · Groq). Ask me about irrigation, crops, pH, LSTM.',
+      i:'💧 Irrigate when soil moisture < **35%**. LSTM forecasts 7 days ahead.',
+      d:'💡 I can help: irrigation, crops, pH, LSTM, Random Forest, ESP32.\n\n🔑 *Add your Groq key (🔑) for advanced AI — free at console.groq.com*'
+    }
+  };
+  const l=kb[_lang]||kb.fr;
+  return l[k]||l.d;
+}
+
+/* ════════════════ ROUTER PRINCIPAL ════════════════
+   Groq Scout (vision+texte) → Groq 70B → Gemini → Local
+══════════════════════════════════════════════════ */
+async function _reply(text,file){
+  const isImg=file?.type.startsWith('image/');
+
+  /* 1. Groq — LLaMA 4 Scout (vision) ou LLaMA 3 8B (texte) */
+  if(_qk){
+    try{ return await _groqVision(text,file); }
+    catch(e){
+      console.warn('[Groq Scout]',e.message);
+      /* Retry avec LLaMA 3 si vision échoue */
+      if(!isImg && e.message!=='no_groq_key'){
+        try{ return await _groqText(text); }
+        catch(e2){ console.warn('[Groq 70B]',e2.message); }
       }
+    }
+  }
 
-      /* Contexte du graphique */
-      const ctx = /lstm|prevision|prévision|humidite|température|temperature/i.test(
-        (userText || '') + file.name) ? 'lstm' : 'default';
+  /* Image sans clé Groq */
+  if(isImg && !_qk){
+    return {
+      fr:`🖼️ **${file.name}** reçue.\n\n🔑 Ajoutez votre **clé Groq** (bouton 🔑) pour analyser les images avec **LLaMA 4 Scout Vision**.\n💡 Clé gratuite sur **console.groq.com**`,
+      ar:`🖼️ تم استلام **${file.name}**.\n\n🔑 أضف مفتاح **Groq** لتحليل الصور مع **LLaMA 4 Scout Vision**.\nمجاني على **console.groq.com**`,
+      en:`🖼️ **${file.name}** received.\n\n🔑 Add your **Groq key** (🔑 button) to analyze images with **LLaMA 4 Scout Vision**.\n💡 Free key at **console.groq.com**`
+    }[_lang]||'';
+  }
 
-      /* Question par défaut */
-      const defQ = {
-        fr: 'Explique-moi ce graphique en détail pour que tout le monde comprenne. Que dois-je faire ?',
-        ar: 'اشرح لي هذا المخطط بالتفصيل حتى يفهمه الجميع. ماذا يجب أن أفعل؟',
-        en: 'Explain this graph in detail so everyone can understand it. What should I do?'
-      }[lang] || 'Explique ce graphique.';
+  /* 2. Gemini (fallback texte si clé dispo) */
+  if(_gk && !isImg){
+    try{ return await _gemini(text); }
+    catch(e){ console.warn('[Gemini]',e.message); }
+  }
 
-      const question = (userText || defQ).trim();
+  /* 3. Base locale */
+  return _local(text);
+}
 
-      try {
-        /* Convertir image en base64 pur */
-        const base64 = await new Promise((res, rej) => {
-          const rd = new FileReader();
-          rd.onload  = () => res(rd.result.split(',')[1]);
-          rd.onerror = () => rej(new Error('Lecture échouée'));
-          rd.readAsDataURL(file);
-        });
+/* ════════════════ ENVOI PRINCIPAL ════════════════ */
+window.envoyerChat=async function(){
+  if(_busy)return;
+  const inp=document.getElementById('chat-input');
+  const text=(inp?.value||'').trim();
+  const file=_file;
+  if(!text&&!file)return;
+  _busy=true;
+  if(inp){inp.value='';inp.style.height='auto';}
+  _msg('user',file
+    ?`${text?text+'\n\n':''}${file.type.startsWith('image/')?'🖼️':'📄'} *${file.name}*`
+    :text);
+  window._rmFile();
+  _hist.push({role:'user',content:text||(file?.name||'')});
+  _typing(true);
+  try{
+    const rep=await _reply(text,file);
+    _typing(false);
+    _msg('bot',rep);
+    _hist.push({role:'assistant',content:rep});
+    if(typeof window.speakText==='function')window.speakText(rep,_lang);
+  }catch(e){ _typing(false); _msg('bot','⚠️ Erreur : '+e.message); }
+  finally{ _busy=false; }
+};
 
-        /* Appel à l'endpoint dédié */
-        const resp = await fetch('api/analyse_image.php', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            image:      base64,
-            media_type: file.type || 'image/jpeg',
-            question:   question,
-            lang:       lang,
-            context:    ctx
-          })
-        });
+/* ════════════════ GESTION CLÉS ════════════════ */
+window.saveGeminiKey=function(k){
+  _gk=(k||'').trim();
+  try{localStorage.setItem('agri_gemini_key',_gk);}catch(e){}
+  document.getElementById('chat-gemini-key').style.display='none';
+  if(_gk)_msg('bot','✅ Clé **Gemini** sauvegardée ! (fallback texte)');
+};
+window.saveGroqKey=function(k){
+  _qk=(k||'').trim();
+  try{localStorage.setItem('agri_groq_key',_qk);}catch(e){}
+  if(_qk)_msg('bot','✅ Clé **Groq** sauvegardée !\n🦙 **LLaMA 4 Scout** (vision) + **LLaMA 3** (texte) activés !');
+};
+if(!window.clearChat)window.clearChat=function(){
+  _hist=[];window._rmFile();
+  const b=document.getElementById('chat-messages');if(b)b.innerHTML='';
+  _msg('bot',{fr:'🦙 Bonjour ! Comment puis-je vous aider ?',ar:'🦙 مرحباً!',en:'🦙 Hello!'}[_lang]||'🦙');
+};
+window._callClaudeWithFile=(t,f)=>_reply(t||'Analyse cette image agricole.',f);
+const _pl=window.setChatLang;
+window.setChatLang=function(l){_lang=l;if(typeof _pl==='function')_pl(l);};
 
-        const txt = await resp.text();
-        let d;
-        try { d = JSON.parse(txt); }
-        catch(e) { throw new Error('PHP error: ' + txt.substring(0, 150)); }
+/* ════════════════ BIENVENUE ════════════════ */
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    const b=document.getElementById('chat-messages');
+    if(b&&!b.children.length){
+      const model=_qk?'🦙 LLaMA 4 Scout (Groq)':'🌿 Base locale';
+      _msg('bot',`🦙 Bonjour ! Je suis **AgriBot** (${model})\n\n💬 Posez vos questions agricoles\n📎 Envoyez une image → analysée par **LLaMA 4 Scout Vision**\n\n${!_qk?'🔑 *Ajoutez votre clé Groq (gratuite) via le bouton 🔑*\n💡 **console.groq.com** → Create API Key':''}`);
+    }
+  },1200);
+  /* Panneau clé — Groq en priorité */
+  setTimeout(()=>{
+    const p=document.getElementById('chat-gemini-key');
+    if(p){
+      /* Mettre Groq en premier */
+      p.querySelector('div:first-child')?.remove();
+      p.innerHTML=`
+        <div style="font-size:11px;color:var(--slate);margin-bottom:5px">🦙 <strong>Clé Groq</strong> — LLaMA 4 Scout Vision + LLaMA 3 · Gratuit sur <a href="https://console.groq.com" target="_blank" style="color:#7c3aed;font-weight:700">console.groq.com</a></div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input type="password" id="groq-key-input" placeholder="gsk_..." value="${_qk}"
+            style="flex:1;border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;font-family:monospace;background:var(--bg);outline:none">
+          <button onclick="saveGroqKey(document.getElementById('groq-key-input').value)"
+            style="background:#6d28d9;color:#fff;border:none;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer">🦙 Activer</button>
+        </div>
+        <div style="border-top:1px solid rgba(255,255,255,.12);padding-top:8px;margin-top:4px">
+          <div style="font-size:10px;color:var(--slate);margin-bottom:4px">✨ Gemini (optionnel — fallback texte)</div>
+          <div style="display:flex;gap:8px">
+            <input type="password" id="gemini-key-input" placeholder="AIza..." value="${_gk}"
+              style="flex:1;border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;font-family:monospace;background:var(--bg);outline:none">
+            <button onclick="saveGeminiKey(document.getElementById('gemini-key-input').value)"
+              style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer">Save</button>
+          </div>
+        </div>`;
+    }
+  },1500);
+});
 
-        if (d.success && d.reply) {
-          if (typeof _chatHistory !== 'undefined') {
-            _chatHistory.push({ role: 'user',      content: '[Image] ' + question });
-            _chatHistory.push({ role: 'assistant', content: d.reply });
-          }
-          return d.reply;
-        }
-        throw new Error(d.message || 'Erreur API');
-
-      } catch(e) {
-        console.error('[Vision] Error:', e.message);
-        /* Fallback LSTM explicatif si API indisponible */
-        if (ctx === 'lstm') {
-          const fallbacks = {
-            fr: `**🌾 En bref :** Le graphique montre l'évolution de l'humidité de votre sol.
-
-**📊 Structure du graphique :**
-- **Ligne grise (gauche)** = mesures réelles des 7 derniers jours
-- **Ligne violette (droite)** = prévision LSTM pour les 7 prochains jours  
-- **Ligne pointillée jaune** = seuil critique 35% (en dessous → irriguer immédiatement)
-- **Ligne verte verticale** = aujourd'hui (séparation passé/futur)
-
-**💡 Règle simple :** Si la courbe violette descend sous la ligne jaune dans les prochains jours → **préparez l'irrigation maintenant** avant que vos plantes souffrent.
-
-⚠️ *Analyse visuelle non disponible (${e.message}). Vérifiez que api/analyse_image.php est bien copié dans XAMPP.*`,
-            ar: `**🌾 باختصار:** المخطط يُظهر تطور رطوبة التربة.
-
-**📊 بنية المخطط:**
-- **الخط الرمادي (يسار)** = قياسات الأسبوع الماضي
-- **الخط البنفسجي (يمين)** = توقعات 7 أيام قادمة
-- **الخط المنقط الأصفر** = الحد الحرج 35%
-- **الخط الأخضر** = اليوم
-
-**💡 القاعدة:** إذا نزل الخط البنفسجي تحت الأصفر → **ري فوري**`
-          };
-          return fallbacks[lang] || fallbacks.fr;
-        }
-        return '⚠️ Erreur: ' + e.message + '\n\nVérifiez que `api/analyse_image.php` est dans votre dossier XAMPP.';
-      }
-    };
-
-  console.log('[AgriSmart] ✅ Vision override actif — _callClaudeWithFile remplacé');
+console.log('[AgriSmart] ✅ ChatBot Groq — LLaMA 4 Scout Vision · LLaMA 3 · Gemini fallback · Local KB');
 })();
 </script>
 
